@@ -1,0 +1,198 @@
+@page "/projects/{ProjectId:int}"
+@using SuperQA.Shared.DTOs
+@using SuperQA.Client.Services
+@inject IProjectService ProjectService
+@inject ITestCaseService TestCaseService
+@inject IRequirementService RequirementService
+@inject NavigationManager Navigation
+
+<PageTitle>Project Details</PageTitle>
+
+@if (loading)
+{
+    <p><em>Loading project...</em></p>
+}
+else if (project != null)
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>@project.Name</h1>
+            <p class="text-muted">@project.Description</p>
+        </div>
+        <button class="btn btn-secondary" @onclick="GoBack">← Back to Projects</button>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "requirements" ? "active" : "")" @onclick='() => activeTab = "requirements"' href="javascript:void(0)">Requirements</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "testcases" ? "active" : "")" @onclick='() => activeTab = "testcases"' href="javascript:void(0)">Test Cases</a>
+        </li>
+    </ul>
+
+    @if (activeTab == "requirements")
+    {
+        <div class="mb-3">
+            <button class="btn btn-success" @onclick="ShowCreateRequirementForm">+ Add Requirement</button>
+        </div>
+
+        @if (showCreateRequirementForm)
+        {
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Add New Requirement</h5>
+                    <EditForm Model="@newRequirement" OnValidSubmit="@CreateRequirement">
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <InputText class="form-control" @bind-Value="newRequirement.Title" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputTextArea class="form-control" @bind-Value="newRequirement.Description" rows="3" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <InputSelect class="form-control" @bind-Value="newRequirement.Type">
+                                <option value="User Story">User Story</option>
+                                <option value="Feature">Feature</option>
+                                <option value="Bug Fix">Bug Fix</option>
+                            </InputSelect>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add</button>
+                        <button type="button" class="btn btn-secondary" @onclick="() => showCreateRequirementForm = false">Cancel</button>
+                    </EditForm>
+                </div>
+            </div>
+        }
+
+        @if (requirements != null && requirements.Any())
+        {
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in requirements)
+                        {
+                            <tr>
+                                <td>@req.Title</td>
+                                <td><span class="badge bg-info">@req.Type</span></td>
+                                <td>@req.CreatedAt.ToShortDateString()</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" @onclick="() => GenerateTestCases(req.Id)">
+                                        🤖 Generate Test Cases
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No requirements yet. Add one to get started!</p>
+        }
+    }
+    else if (activeTab == "testcases")
+    {
+        @if (testCases != null && testCases.Any())
+        {
+            <div class="row">
+                @foreach (var testCase in testCases)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    @testCase.Title
+                                    @if (testCase.IsAIGenerated)
+                                    {
+                                        <span class="badge bg-success ms-2">AI Generated</span>
+                                    }
+                                </h5>
+                                <p class="card-text"><strong>Description:</strong> @testCase.Description</p>
+                                <p class="card-text"><strong>Preconditions:</strong> @testCase.Preconditions</p>
+                                <p class="card-text"><strong>Steps:</strong><br/>@((MarkupString)testCase.Steps.Replace("\n", "<br/>"))</p>
+                                <p class="card-text"><strong>Expected Results:</strong> @testCase.ExpectedResults</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No test cases yet. Generate them from requirements!</p>
+        }
+    }
+}
+
+@code {
+    [Parameter]
+    public int ProjectId { get; set; }
+
+    private ProjectDto? project;
+    private IEnumerable<RequirementDto>? requirements;
+    private IEnumerable<TestCaseDto>? testCases;
+    private bool loading = true;
+    private string activeTab = "requirements";
+    private bool showCreateRequirementForm = false;
+    private CreateRequirementDto newRequirement = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+        await LoadRequirements();
+        await LoadTestCases();
+    }
+
+    private async Task LoadProject()
+    {
+        loading = true;
+        project = await ProjectService.GetProjectAsync(ProjectId);
+        loading = false;
+    }
+
+    private async Task LoadRequirements()
+    {
+        requirements = await RequirementService.GetRequirementsAsync(ProjectId);
+    }
+
+    private async Task LoadTestCases()
+    {
+        testCases = await TestCaseService.GetTestCasesAsync(ProjectId);
+    }
+
+    private void ShowCreateRequirementForm()
+    {
+        newRequirement = new CreateRequirementDto { ProjectId = ProjectId, Type = "User Story" };
+        showCreateRequirementForm = true;
+    }
+
+    private async Task CreateRequirement()
+    {
+        await RequirementService.CreateRequirementAsync(newRequirement);
+        showCreateRequirementForm = false;
+        await LoadRequirements();
+    }
+
+    private async Task GenerateTestCases(int requirementId)
+    {
+        await TestCaseService.GenerateTestCasesAsync(requirementId);
+        await LoadTestCases();
+        activeTab = "testcases";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/projects");
+    }
+}
