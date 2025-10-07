@@ -1,0 +1,6 @@
+@SuperQA.Api_HostAddress = http://localhost:5183
+
+GET {{SuperQA.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
