@@ -35,20 +35,20 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 var addPackageResult = await RunCommandAsync("dotnet", "add package Microsoft.Playwright.NUnit", projectPath);
                 logs.Add(addPackageResult);
 
-                // Install Playwright browsers
-                logs.Add("Installing Playwright browsers...");
-                var installBrowsersResult = await RunCommandAsync("pwsh", "-c \"dotnet tool install --global Microsoft.Playwright.CLI 2>&1 ; playwright install chromium\"", projectPath);
-                logs.Add(installBrowsersResult);
-
                 // Write the test script
                 var testFilePath = Path.Combine(projectPath, "GeneratedTest.cs");
                 await File.WriteAllTextAsync(testFilePath, testScript);
                 logs.Add($"Test script written to: {testFilePath}");
 
-                // Build the project
+                // Build the project first (required before installing browsers)
                 logs.Add("Building test project...");
                 var buildResult = await RunCommandAsync("dotnet", "build", projectPath);
                 logs.Add(buildResult);
+
+                // Install Playwright browsers using the node CLI from the build output
+                logs.Add("Installing Playwright browsers...");
+                var installBrowsersResult = await InstallPlaywrightBrowsersAsync(projectPath);
+                logs.Add(installBrowsersResult);
 
                 // Run the tests
                 logs.Add("Executing tests...");
@@ -104,6 +104,55 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
 
         response.Logs = logs;
         return response;
+    }
+
+    private async Task<string> InstallPlaywrightBrowsersAsync(string projectPath)
+    {
+        try
+        {
+            // Find the build output directory
+            var buildOutputPath = Path.Combine(projectPath, "bin", "Debug", "net9.0");
+            var playwrightPath = Path.Combine(buildOutputPath, ".playwright");
+            
+            if (!Directory.Exists(playwrightPath))
+            {
+                return "Warning: Playwright package directory not found. Browsers may not be installed.";
+            }
+
+            // Find the node executable
+            var nodeDir = Path.Combine(playwrightPath, "node");
+            if (!Directory.Exists(nodeDir))
+            {
+                return "Warning: Node directory not found. Browsers may not be installed.";
+            }
+
+            var nodeDirs = Directory.GetDirectories(nodeDir);
+            if (nodeDirs.Length == 0)
+            {
+                return "Warning: Node executable not found. Browsers may not be installed.";
+            }
+
+            var nodeExe = Path.Combine(nodeDirs[0], OperatingSystem.IsWindows() ? "node.exe" : "node");
+            if (!File.Exists(nodeExe))
+            {
+                return "Warning: Node executable not found. Browsers may not be installed.";
+            }
+
+            // Find the Playwright CLI script
+            var cliScript = Path.Combine(playwrightPath, "package", "cli.js");
+            if (!File.Exists(cliScript))
+            {
+                return "Warning: Playwright CLI script not found. Browsers may not be installed.";
+            }
+
+            // Execute node cli.js install chromium
+            var installResult = await RunCommandAsync(nodeExe, $"\"{cliScript}\" install chromium", projectPath);
+            return installResult;
+        }
+        catch (Exception ex)
+        {
+            return $"Warning: Failed to install Playwright browsers: {ex.Message}";
+        }
     }
 
     private async Task<string> RunCommandAsync(string command, string arguments, string workingDirectory)
