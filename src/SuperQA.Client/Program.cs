@@ -17,5 +17,6 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITestCaseService, TestCaseService>();
 builder.Services.AddScoped<IRequirementService, RequirementService>();
+builder.Services.AddScoped<SuperQA.Client.Services.ITestExecutionService, SuperQA.Client.Services.TestExecutionService>();
 
 await builder.Build().RunAsync();

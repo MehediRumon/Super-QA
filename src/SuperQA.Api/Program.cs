@@ -31,6 +31,8 @@ builder.Services.AddDbContext<SuperQADbContext>(options =>
 // Register services
 builder.Services.AddHttpClient<IMCPService, MCPService>();
 builder.Services.AddScoped<IAITestGeneratorService, AITestGeneratorService>();
+builder.Services.AddScoped<ITestExecutionService, TestExecutionService>();
+builder.Services.AddSingleton<IBackgroundTestRunner, BackgroundTestRunnerService>();
 
 var app = builder.Build();
 

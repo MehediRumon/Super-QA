@@ -19,7 +19,12 @@ else if (project != null)
             <h1>@project.Name</h1>
             <p class="text-muted">@project.Description</p>
         </div>
-        <button class="btn btn-secondary" @onclick="GoBack">← Back to Projects</button>
+        <div>
+            <button class="btn btn-primary me-2" @onclick="ViewTestExecutions">
+                <i class="bi bi-play-circle"></i> Test Executions
+            </button>
+            <button class="btn btn-secondary" @onclick="GoBack">← Back to Projects</button>
+        </div>
     </div>
 
     <ul class="nav nav-tabs mb-3">
@@ -189,6 +194,11 @@ else if (project != null)
         await TestCaseService.GenerateTestCasesAsync(requirementId);
         await LoadTestCases();
         activeTab = "testcases";
+    }
+
+    private void ViewTestExecutions()
+    {
+        Navigation.NavigateTo($"/test-executions/{ProjectId}");
     }
 
     private void GoBack()
