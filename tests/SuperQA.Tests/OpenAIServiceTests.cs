@@ -143,4 +143,52 @@ public class OpenAIServiceTests
         Assert.NotNull(result);
         Assert.Contains("using Microsoft.Playwright", result);
     }
+
+    [Fact]
+    public async Task GeneratePlaywrightTestScriptAsync_SuccessfulResponse_DoesNotContainPlaywrightSharp()
+    {
+        // Arrange
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var responseContent = @"{
+            ""choices"": [
+                {
+                    ""message"": {
+                        ""content"": ""```csharp\nusing Microsoft.Playwright;\nusing Microsoft.Playwright.NUnit;\nusing NUnit.Framework;\n\nnamespace PlaywrightTests;\n\n[TestFixture]\npublic class Tests : PageTest\n{\n    [Test]\n    public async Task BasicTest()\n    {\n        await Page.GotoAsync(\""https://example.com\"");\n    }\n}\n```""
+                    }
+                }
+            ]
+        }";
+
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(responseContent)
+            });
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+        var service = new OpenAIService(httpClient);
+
+        // Act
+        var result = await service.GeneratePlaywrightTestScriptAsync(
+            "test frs",
+            "https://example.com",
+            "test-api-key",
+            "gpt-4o-mini");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("using Microsoft.Playwright", result);
+        Assert.Contains("using Microsoft.Playwright.NUnit", result);
+        Assert.Contains("PageTest", result);
+        // Ensure it does NOT contain the deprecated PlaywrightSharp namespace
+        Assert.DoesNotContain("PlaywrightSharp", result);
+        Assert.DoesNotContain("IBrowser", result); // IBrowser is from the old API
+        Assert.DoesNotContain("IPage", result); // IPage is from the old API
+    }
 }
