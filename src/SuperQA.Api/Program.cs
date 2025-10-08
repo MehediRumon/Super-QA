@@ -43,6 +43,7 @@ builder.Services.AddScoped<ITestExecutionService, TestExecutionService>();
 builder.Services.AddSingleton<IBackgroundTestRunner, BackgroundTestRunnerService>();
 builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
 builder.Services.AddScoped<IPlaywrightTestExecutor, PlaywrightTestExecutor>();
+builder.Services.AddScoped<IPageInspectorService, PageInspectorService>();
 
 var app = builder.Build();
 

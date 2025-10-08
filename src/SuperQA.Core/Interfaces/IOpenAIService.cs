@@ -2,5 +2,5 @@ namespace SuperQA.Core.Interfaces;
 
 public interface IOpenAIService
 {
-    Task<string> GeneratePlaywrightTestScriptAsync(string frsText, string applicationUrl, string apiKey, string model);
+    Task<string> GeneratePlaywrightTestScriptAsync(string frsText, string applicationUrl, string apiKey, string model, string? pageStructure = null);
 }
