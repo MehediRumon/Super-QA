@@ -1,0 +1,317 @@
+@page "/test-executions/{ProjectId:int}"
+@using SuperQA.Shared.DTOs
+@using SuperQA.Client.Services
+@inject Client.Services.ITestExecutionService TestExecutionService
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Test Executions</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Test Executions</h2>
+            @if (project != null)
+            {
+                <p class="text-muted">Project: @project.Name</p>
+            }
+        </div>
+        <div>
+            <button class="btn btn-secondary me-2" @onclick="NavigateBack">
+                <i class="bi bi-arrow-left"></i> Back to Project
+            </button>
+            <button class="btn btn-primary" @onclick="RunAllTests" disabled="@isRunningTests">
+                @if (isRunningTests)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    @("Running...")
+                }
+                else
+                {
+                    <i class="bi bi-play-fill"></i>
+                    @("Run All Tests")
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (testRunStatus != "Not Started" && testRunStatus != "Completed")
+    {
+        <div class="alert alert-info" role="alert">
+            <strong>Test Run Status:</strong> @testRunStatus
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (executions == null || !executions.Any())
+    {
+        <div class="alert alert-info">
+            No test executions found. Run tests to see results here.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Execution Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <h3 class="text-success">@passedCount</h3>
+                                <p>Passed</p>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h3 class="text-danger">@failedCount</h3>
+                                <p>Failed</p>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h3 class="text-warning">@runningCount</h3>
+                                <p>Running</p>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h3>@totalCount</h3>
+                                <p>Total</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Test Case</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Executed At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var execution in executions.OrderByDescending(e => e.ExecutedAt))
+                            {
+                                <tr>
+                                    <td>@execution.TestCaseTitle</td>
+                                    <td>
+                                        @if (execution.Status == "Passed")
+                                        {
+                                            <span class="badge bg-success">Passed</span>
+                                        }
+                                        else if (execution.Status == "Failed")
+                                        {
+                                            <span class="badge bg-danger">Failed</span>
+                                        }
+                                        else if (execution.Status == "Running")
+                                        {
+                                            <span class="badge bg-warning">Running</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@execution.Status</span>
+                                        }
+                                    </td>
+                                    <td>@(execution.DurationMs)ms</td>
+                                    <td>@execution.ExecutedAt.ToLocalTime().ToString("g")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(execution)">
+                                            <i class="bi bi-eye"></i> Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (selectedExecution != null)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Execution Details: @selectedExecution.TestCaseTitle</h5>
+                        <button type="button" class="btn-close" @onclick="CloseDetails"></button>
+                    </div>
+                    <div class="modal-body">
+                        <dl class="row">
+                            <dt class="col-sm-3">Status:</dt>
+                            <dd class="col-sm-9">
+                                @if (selectedExecution.Status == "Passed")
+                                {
+                                    <span class="badge bg-success">Passed</span>
+                                }
+                                else if (selectedExecution.Status == "Failed")
+                                {
+                                    <span class="badge bg-danger">Failed</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@selectedExecution.Status</span>
+                                }
+                            </dd>
+
+                            <dt class="col-sm-3">Duration:</dt>
+                            <dd class="col-sm-9">@(selectedExecution.DurationMs)ms</dd>
+
+                            <dt class="col-sm-3">Executed At:</dt>
+                            <dd class="col-sm-9">@selectedExecution.ExecutedAt.ToLocalTime().ToString("F")</dd>
+
+                            @if (!string.IsNullOrWhiteSpace(selectedExecution.ErrorMessage))
+                            {
+                                <dt class="col-sm-3">Error:</dt>
+                                <dd class="col-sm-9">
+                                    <div class="alert alert-danger">
+                                        @selectedExecution.ErrorMessage
+                                    </div>
+                                </dd>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(selectedExecution.StackTrace))
+                            {
+                                <dt class="col-sm-3">Stack Trace:</dt>
+                                <dd class="col-sm-9">
+                                    <pre class="bg-light p-2" style="max-height: 200px; overflow-y: auto;">@selectedExecution.StackTrace</pre>
+                                </dd>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(selectedExecution.Screenshot))
+                            {
+                                <dt class="col-sm-3">Screenshot:</dt>
+                                <dd class="col-sm-9">
+                                    <img src="data:image/png;base64,@selectedExecution.Screenshot" alt="Failure Screenshot" class="img-fluid" />
+                                </dd>
+                            }
+                        </dl>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDetails">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int ProjectId { get; set; }
+
+    private ProjectDto? project;
+    private List<TestExecutionDto> executions = new();
+    private bool isLoading = true;
+    private bool isRunningTests = false;
+    private string testRunStatus = "Not Started";
+    private TestExecutionDto? selectedExecution;
+    private System.Threading.Timer? statusTimer;
+
+    private int passedCount => executions?.Count(e => e.Status == "Passed") ?? 0;
+    private int failedCount => executions?.Count(e => e.Status == "Failed") ?? 0;
+    private int runningCount => executions?.Count(e => e.Status == "Running") ?? 0;
+    private int totalCount => executions?.Count ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+        await LoadExecutions();
+    }
+
+    private async Task LoadProject()
+    {
+        project = await ProjectService.GetProjectAsync(ProjectId);
+    }
+
+    private async Task LoadExecutions()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await TestExecutionService.GetProjectExecutionsAsync(ProjectId);
+            executions = result.ToList();
+        }
+        catch (Exception)
+        {
+            // Handle error
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RunAllTests()
+    {
+        isRunningTests = true;
+        testRunStatus = "Starting";
+
+        try
+        {
+            await TestExecutionService.RunAllTestsAsync(ProjectId);
+            
+            // Start polling for status
+            statusTimer = new System.Threading.Timer(async _ =>
+            {
+                await CheckStatus();
+            }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+        }
+        catch (Exception)
+        {
+            isRunningTests = false;
+            testRunStatus = "Failed to start";
+        }
+    }
+
+    private async Task CheckStatus()
+    {
+        try
+        {
+            testRunStatus = await TestExecutionService.GetTestRunStatusAsync(ProjectId);
+            await LoadExecutions();
+
+            if (testRunStatus == "Completed" || testRunStatus == "Failed")
+            {
+                isRunningTests = false;
+                statusTimer?.Dispose();
+                statusTimer = null;
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // Ignore polling errors
+        }
+    }
+
+    private void ViewDetails(TestExecutionDto execution)
+    {
+        selectedExecution = execution;
+    }
+
+    private void CloseDetails()
+    {
+        selectedExecution = null;
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo($"/project/{ProjectId}");
+    }
+
+    public void Dispose()
+    {
+        statusTimer?.Dispose();
+    }
+}
