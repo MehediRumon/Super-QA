@@ -210,7 +210,8 @@ Response:
 The Playwright Test Generator uses a two-step process to create accurate test scripts:
 
 1. **Page Inspection**: 
-   - When you click "Generate Test Script", the system first launches a headless Playwright browser
+   - When you click "Generate Test Script", the system first launches a Playwright browser
+   - The browser can run in headless mode (invisible) or headed mode (visible) based on configuration
    - It navigates to your application URL and waits for the page to load
    - It extracts information about all interactive elements on the page:
      - Input fields (with their name, ID, type, placeholder, etc.)
@@ -295,6 +296,39 @@ The system has been optimized to reduce OpenAI API costs:
 - Check that the application URL is accessible
 - Ensure Playwright is properly installed
 - Review execution logs for specific errors
+- Check browser configuration (headless/headed mode) in appsettings.json
+
+### Browser Configuration
+
+The Playwright browser can run in two modes:
+- **Headless mode** (default in production): Browser runs invisibly in the background
+- **Headed mode** (default in development): Browser window opens visually so you can watch tests execute
+
+To configure browser visibility, update the `appsettings.json` or `appsettings.Development.json` file:
+
+```json
+{
+  "Playwright": {
+    "Headless": false  // false = browser visible, true = browser invisible
+  }
+}
+```
+
+**Default settings:**
+- Development (`appsettings.Development.json`): `Headless: false` (browser visible)
+- Production (`appsettings.json`): `Headless: true` (browser invisible)
+
+**When to use headed mode:**
+- Debugging test scripts
+- Watching test execution in real-time
+- Developing new test scenarios
+- Demonstrating test automation to stakeholders
+
+**When to use headless mode:**
+- Production environments
+- CI/CD pipelines
+- Automated test runs
+- Better performance and resource usage
 
 ### Script doesn't work as expected
 - Review and refine your FRS to be more specific
