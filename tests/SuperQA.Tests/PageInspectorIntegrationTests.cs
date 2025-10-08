@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using SuperQA.Infrastructure.Services;
 using System.Text.Json;
 using Xunit.Abstractions;
@@ -13,11 +14,23 @@ public class PageInspectorIntegrationTests
         _output = output;
     }
 
+    private IConfiguration CreateConfiguration()
+    {
+        var configData = new Dictionary<string, string>
+        {
+            { "Playwright:Headless", "true" }
+        };
+        
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(configData!)
+            .Build();
+    }
+
     [Fact]
     public async Task GetPageStructureAsync_ExtractsInputElements()
     {
         // Arrange
-        var service = new PageInspectorService();
+        var service = new PageInspectorService(CreateConfiguration());
 
         // Act - Test against example.com which has basic HTML structure
         var result = await service.GetPageStructureAsync("http://example.com");
@@ -33,7 +46,7 @@ public class PageInspectorIntegrationTests
     public async Task GetPageStructureAsync_ParsesElementStructure()
     {
         // Arrange
-        var service = new PageInspectorService();
+        var service = new PageInspectorService(CreateConfiguration());
 
         // Act
         var result = await service.GetPageStructureAsync("http://example.com");
