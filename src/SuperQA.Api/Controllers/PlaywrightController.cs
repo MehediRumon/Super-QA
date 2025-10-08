@@ -10,11 +10,13 @@ public class PlaywrightController : ControllerBase
 {
     private readonly IOpenAIService _openAIService;
     private readonly IPlaywrightTestExecutor _playwrightTestExecutor;
+    private readonly IPageInspectorService _pageInspectorService;
 
-    public PlaywrightController(IOpenAIService openAIService, IPlaywrightTestExecutor playwrightTestExecutor)
+    public PlaywrightController(IOpenAIService openAIService, IPlaywrightTestExecutor playwrightTestExecutor, IPageInspectorService pageInspectorService)
     {
         _openAIService = openAIService;
         _playwrightTestExecutor = playwrightTestExecutor;
+        _pageInspectorService = pageInspectorService;
     }
 
     [HttpPost("generate")]
@@ -43,11 +45,25 @@ public class PlaywrightController : ControllerBase
                     ErrorMessage = "OpenAI API key is required" 
                 });
 
+            // Inspect the actual page to get real selectors
+            string? pageStructure = null;
+            try
+            {
+                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl);
+            }
+            catch (Exception ex)
+            {
+                // If page inspection fails, continue without it
+                // The AI will generate generic selectors
+                Console.WriteLine($"Page inspection failed: {ex.Message}");
+            }
+
             var generatedScript = await _openAIService.GeneratePlaywrightTestScriptAsync(
                 request.FrsText,
                 request.ApplicationUrl,
                 request.OpenAIApiKey,
-                request.Model);
+                request.Model,
+                pageStructure);
 
             return Ok(new PlaywrightTestGenerationResponse
             {

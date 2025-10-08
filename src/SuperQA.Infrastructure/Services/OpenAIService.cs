@@ -15,26 +15,37 @@ public class OpenAIService : IOpenAIService
         _httpClient = httpClient;
     }
 
-    public async Task<string> GeneratePlaywrightTestScriptAsync(string frsText, string applicationUrl, string apiKey, string model)
+    public async Task<string> GeneratePlaywrightTestScriptAsync(string frsText, string applicationUrl, string apiKey, string model, string? pageStructure = null)
     {
+        var pageStructureSection = string.IsNullOrWhiteSpace(pageStructure) 
+            ? "" 
+            : $@"
+
+ACTUAL PAGE ELEMENTS DETECTED:
+{pageStructure}
+
+IMPORTANT: Use the ACTUAL selectors from the page elements above. DO NOT create placeholder or generic selectors. Match the exact element selectors, IDs, names, and attributes from the detected page structure.";
+
         var prompt = $@"You are an expert test automation engineer. Generate a comprehensive Playwright test script in C# based on the following:
 
 Functional Requirement Specification (FRS):
 {frsText}
 
-Application URL: {applicationUrl}
+Application URL: {applicationUrl}{pageStructureSection}
 
 Requirements for the generated script:
 1. Create a complete C# Playwright test class using NUnit
 2. Include necessary using statements
-3. Automatically detect and include locators for page elements from the application
-4. Implement actions such as clicks, inputs, and navigation based on the FRS
-5. Add assertions derived from the FRS to validate expected behavior
-6. Use proper Playwright best practices (Page Object Model concepts where appropriate)
-7. Include setup and teardown methods
-8. Add meaningful test method names and comments
-9. Use async/await patterns properly
-10. Include proper error handling
+3. Use the ACTUAL element selectors from the page structure provided above (if available)
+4. If page structure is provided, match element selectors exactly as they appear (by ID, name, type, or class)
+5. Implement actions such as clicks, inputs, and navigation based on the FRS
+6. Add assertions derived from the FRS to validate expected behavior
+7. Use proper Playwright best practices (Page Object Model concepts where appropriate)
+8. Include setup and teardown methods
+9. Add meaningful test method names and comments
+10. Use async/await patterns properly
+11. Include proper error handling
+12. DO NOT add comments like 'Modify selector as per actual...' - use the actual selectors provided
 
 Generate ONLY the C# code without any additional explanation. The code should be production-ready and executable.";
 

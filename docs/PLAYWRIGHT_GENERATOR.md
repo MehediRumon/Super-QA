@@ -9,7 +9,8 @@ The Playwright Test Generator is an AI-powered feature that enables users to gen
 - **OpenAI Integration**: Uses OpenAI's GPT models (GPT-4, GPT-4 Turbo, or GPT-3.5 Turbo) to generate intelligent test scripts
 - **Secure API Key Handling**: API keys are not stored and only used for the current request
 - **FRS to Test Script**: Converts functional requirements into executable Playwright C# test scripts
-- **Automatic Locator Detection**: Generated scripts include element locators from the target application
+- **Automatic Page Inspection**: Automatically inspects the target application URL to detect actual page elements and their selectors
+- **Real Element Selectors**: Uses actual element IDs, names, types, and classes from the live page instead of placeholder selectors
 - **Action Implementation**: Generates code for actions like clicks, inputs, and navigation
 - **Assertion Generation**: Creates assertions based on expected behavior from the FRS
 - **Test Execution**: Ability to execute the generated test scripts and view results
@@ -61,8 +62,15 @@ User Login Feature:
 ### Step 3: Generate Test Script
 
 1. Click the **"🤖 Generate Test Script"** button
-2. Wait for the AI to generate the test script (this may take 10-30 seconds)
-3. The generated C# Playwright test script will appear in the right panel
+2. The system will automatically:
+   - Navigate to the application URL using Playwright
+   - Inspect the page to identify actual elements (inputs, buttons, links, etc.)
+   - Extract real element selectors (IDs, names, types, classes)
+   - Send this information to the AI along with your FRS
+3. Wait for the AI to generate the test script (this may take 10-30 seconds)
+4. The generated C# Playwright test script will appear in the right panel
+
+**Note**: If the page inspection fails (e.g., URL is inaccessible), the AI will still generate a test script with best-effort selectors based on the FRS.
 
 ### Step 4: Review Generated Script
 
@@ -196,6 +204,32 @@ Response:
 ```
 
 ## Best Practices
+
+### How It Works
+
+The Playwright Test Generator uses a two-step process to create accurate test scripts:
+
+1. **Page Inspection**: 
+   - When you click "Generate Test Script", the system first launches a headless Playwright browser
+   - It navigates to your application URL and waits for the page to load
+   - It extracts information about all interactive elements on the page:
+     - Input fields (with their name, ID, type, placeholder, etc.)
+     - Buttons (with their text, ID, name, etc.)
+     - Links (with their text and href)
+     - Textareas and select dropdowns
+   - This information is structured as JSON with actual selectors
+
+2. **AI Script Generation**:
+   - The extracted page structure is sent to OpenAI along with your FRS
+   - The AI uses the actual element information to generate precise selectors
+   - Instead of generic selectors like `input[name='username']`, it uses the exact selectors found on your page
+   - The result is a test script with real, working selectors that match your application
+
+**Benefits**:
+- ✅ No need to manually inspect the page for element selectors
+- ✅ Generated tests use actual selectors that exist on the page
+- ✅ Reduces errors from placeholder or generic selectors
+- ✅ Tests are more likely to work on first run
 
 ### Writing Good FRS
 
