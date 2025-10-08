@@ -1,0 +1,266 @@
+@page "/playwright-generator"
+@using SuperQA.Shared.DTOs
+@using SuperQA.Client.Services
+@using Microsoft.JSInterop
+@inject IPlaywrightTestService PlaywrightService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Playwright Test Generator</PageTitle>
+
+<h1>🎭 AI-Powered Playwright Test Generator</h1>
+<p class="text-muted">Generate executable Playwright test scripts in C# using OpenAI</p>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Configuration & Requirements</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">OpenAI API Key <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control" @bind="apiKey" placeholder="sk-..." />
+                    <small class="form-text text-muted">Your OpenAI API key (not stored, used only for this request)</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">AI Model</label>
+                    <select class="form-control" @bind="selectedModel">
+                        <option value="gpt-4">GPT-4 (Recommended)</option>
+                        <option value="gpt-4-turbo-preview">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Application URL <span class="text-danger">*</span></label>
+                    <input type="url" class="form-control" @bind="applicationUrl" placeholder="https://example.com" />
+                    <small class="form-text text-muted">URL of the application under test</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Functional Requirement Specification (FRS) <span class="text-danger">*</span></label>
+                    <textarea class="form-control" @bind="frsText" rows="8" 
+                              placeholder="Enter the functional requirements. Example:&#10;&#10;User Login Feature:&#10;1. User should be able to navigate to the login page&#10;2. User should see username and password fields&#10;3. User should be able to enter credentials&#10;4. Upon clicking Login, user should be authenticated&#10;5. Successful login should redirect to dashboard&#10;6. Failed login should display error message"></textarea>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-lg" @onclick="GenerateTestScript" disabled="@isGenerating">
+                        @if (isGenerating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Generating...</span>
+                        }
+                        else
+                        {
+                            <span>🤖 Generate Test Script</span>
+                        }
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3" role="alert">
+                        <strong>Error:</strong> @errorMessage
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Generated Test Script</h5>
+                @if (!string.IsNullOrEmpty(generatedScript))
+                {
+                    <button class="btn btn-sm btn-outline-primary" @onclick="CopyToClipboard">
+                        📋 Copy
+                    </button>
+                }
+            </div>
+            <div class="card-body">
+                @if (string.IsNullOrEmpty(generatedScript))
+                {
+                    <p class="text-muted">Generated test script will appear here...</p>
+                }
+                else
+                {
+                    <pre style="max-height: 400px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px;"><code>@generatedScript</code></pre>
+                    
+                    <div class="d-grid gap-2 mt-3">
+                        <button class="btn btn-success" @onclick="ExecuteTestScript" disabled="@isExecuting">
+                            @if (isExecuting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Executing...</span>
+                            }
+                            else
+                            {
+                                <span>▶️ Execute Test</span>
+                            }
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (executionResult != null)
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Test Execution Results</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Status:</strong>
+                        @if (executionResult.Status == "Pass")
+                        {
+                            <span class="badge bg-success">✓ PASSED</span>
+                        }
+                        else if (executionResult.Status == "Fail")
+                        {
+                            <span class="badge bg-danger">✗ FAILED</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning">⚠ @executionResult.Status</span>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(executionResult.ErrorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> @executionResult.ErrorMessage
+                        </div>
+                    }
+
+                    @if (executionResult.Logs != null && executionResult.Logs.Any())
+                    {
+                        <div>
+                            <strong>Execution Logs:</strong>
+                            <pre style="max-height: 300px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">@string.Join("\n", executionResult.Logs)</pre>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(executionResult.Output))
+                    {
+                        <div class="mt-3">
+                            <strong>Test Output:</strong>
+                            <pre style="max-height: 200px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">@executionResult.Output</pre>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string apiKey = string.Empty;
+    private string selectedModel = "gpt-4";
+    private string applicationUrl = string.Empty;
+    private string frsText = string.Empty;
+    private string generatedScript = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isGenerating = false;
+    private bool isExecuting = false;
+    private PlaywrightTestExecutionResponse? executionResult = null;
+
+    private async Task GenerateTestScript()
+    {
+        errorMessage = string.Empty;
+        generatedScript = string.Empty;
+        executionResult = null;
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            errorMessage = "Please enter your OpenAI API key";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(applicationUrl))
+        {
+            errorMessage = "Please enter the application URL";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(frsText))
+        {
+            errorMessage = "Please enter the Functional Requirement Specification";
+            return;
+        }
+
+        isGenerating = true;
+
+        try
+        {
+            var request = new PlaywrightTestGenerationRequest
+            {
+                FrsText = frsText,
+                ApplicationUrl = applicationUrl,
+                OpenAIApiKey = apiKey,
+                Model = selectedModel
+            };
+
+            var response = await PlaywrightService.GenerateTestScriptAsync(request);
+
+            if (response.Success)
+            {
+                generatedScript = response.GeneratedScript;
+            }
+            else
+            {
+                errorMessage = response.ErrorMessage ?? "Failed to generate test script";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    private async Task ExecuteTestScript()
+    {
+        errorMessage = string.Empty;
+        executionResult = null;
+        isExecuting = true;
+
+        try
+        {
+            var request = new PlaywrightTestExecutionRequest
+            {
+                TestScript = generatedScript,
+                ApplicationUrl = applicationUrl
+            };
+
+            executionResult = await PlaywrightService.ExecuteTestScriptAsync(request);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Execution error: {ex.Message}";
+        }
+        finally
+        {
+            isExecuting = false;
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        // Note: Clipboard API requires HTTPS in production
+        // This is a simplified version
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedScript);
+        }
+        catch
+        {
+            // Fallback or error handling
+        }
+    }
+}
