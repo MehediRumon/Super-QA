@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using SuperQA.Core.Interfaces;
 using SuperQA.Shared.DTOs;
 
@@ -7,6 +8,13 @@ namespace SuperQA.Infrastructure.Services;
 
 public class PlaywrightTestExecutor : IPlaywrightTestExecutor
 {
+    private readonly IConfiguration _configuration;
+
+    public PlaywrightTestExecutor(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
     public async Task<PlaywrightTestExecutionResponse> ExecuteTestScriptAsync(string testScript, string applicationUrl)
     {
         var response = new PlaywrightTestExecutionResponse();
@@ -35,10 +43,14 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 var addPackageResult = await RunCommandAsync("dotnet", "add package Microsoft.Playwright.NUnit", projectPath);
                 logs.Add(addPackageResult);
 
+                // Inject headless configuration into the test script
+                var headless = _configuration.GetValue<bool>("Playwright:Headless", true);
+                var modifiedTestScript = InjectHeadlessConfiguration(testScript, headless);
+
                 // Write the test script
                 var testFilePath = Path.Combine(projectPath, "GeneratedTest.cs");
-                await File.WriteAllTextAsync(testFilePath, testScript);
-                logs.Add($"Test script written to: {testFilePath}");
+                await File.WriteAllTextAsync(testFilePath, modifiedTestScript);
+                logs.Add($"Test script written to: {testFilePath} (Headless: {headless})");
 
                 // Build the project first (required before installing browsers)
                 logs.Add("Building test project...");
@@ -153,6 +165,42 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
         {
             return $"Warning: Failed to install Playwright browsers: {ex.Message}";
         }
+    }
+
+    private string InjectHeadlessConfiguration(string testScript, bool headless)
+    {
+        // Check if the test inherits from PageTest (the standard pattern from AI-generated tests)
+        if (testScript.Contains(": PageTest"))
+        {
+            // Add a SetUp method that configures browser options before each test
+            // We need to insert this after the class declaration but before the first test method
+            
+            var setupMethod = $@"
+    [SetUp]
+    public async Task Setup()
+    {{
+        // Configure browser launch options to control headless mode
+        BrowserNewContextOptions = new BrowserNewContextOptions();
+        BrowserTypeLaunchOptions = new BrowserTypeLaunchOptions
+        {{
+            Headless = {headless.ToString().ToLower()}
+        }};
+    }}
+";
+            
+            // Find the position to insert the setup method
+            // Look for the test class opening brace and insert after it
+            var classPattern = @"public class \w+ : PageTest\s*\{";
+            var match = System.Text.RegularExpressions.Regex.Match(testScript, classPattern);
+            
+            if (match.Success)
+            {
+                var insertPosition = match.Index + match.Length;
+                testScript = testScript.Insert(insertPosition, setupMethod);
+            }
+        }
+        
+        return testScript;
     }
 
     private async Task<string> RunCommandAsync(string command, string arguments, string workingDirectory)
