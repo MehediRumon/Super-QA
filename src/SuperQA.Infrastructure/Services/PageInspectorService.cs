@@ -55,7 +55,8 @@ public class PageInspectorService : IPageInspectorService
                 // Helper function to get visible text
                 function getVisibleText(el) {
                     const text = el.innerText || el.textContent || '';
-                    return text.trim().substring(0, 50); // Limit to 50 chars
+                    // Replace newlines with spaces and limit to 50 chars
+                    return text.replace(/\s+/g, ' ').trim().substring(0, 50);
                 }
                 
                 // Helper function to get placeholder
