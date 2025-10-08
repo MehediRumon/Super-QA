@@ -5,8 +5,10 @@ Get Super-QA up and running in 5 minutes!
 ## Prerequisites
 
 - [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) installed
-- SQL Server or SQL Server LocalDB (comes with Visual Studio)
 - Any modern web browser
+- *(Optional)* SQL Server or SQL Server LocalDB for production use
+
+**Note**: The application now uses an in-memory database in development mode by default, so you don't need SQL Server to get started!
 
 ## Quick Setup
 
@@ -94,6 +96,21 @@ https://localhost:5001
 
 ## Troubleshooting
 
+### Connection Refused Errors
+
+If you see `ERR_CONNECTION_REFUSED` errors in the browser console when accessing the app:
+
+1. **Make sure both the API and Client are running**:
+   - API should be on `https://localhost:7001`
+   - Client should be on `https://localhost:5001` (or `http://localhost:5000`)
+
+2. **Verify the API is using the HTTPS profile**:
+   - When you run `dotnet run` in the API directory, you should see:
+     ```
+     Now listening on: https://localhost:7001
+     ```
+   - If it shows `http://localhost:7000` instead, check that the "https" profile is first in `src/SuperQA.Api/Properties/launchSettings.json`
+
 ### Port Already in Use
 
 If ports 7001 or 5001 are already in use, you can change them in:
@@ -104,7 +121,11 @@ Don't forget to update the API URL in `src/SuperQA.Client/wwwroot/appsettings.js
 
 ### Database Connection Failed
 
-If you see database errors, update the connection string in `src/SuperQA.Api/appsettings.json`:
+**Development Mode (Default):**
+The application uses an in-memory database in development mode by default. No configuration needed!
+
+**Production Mode:**
+If you want to use SQL Server instead, set `UseInMemoryDatabase` to `false` in `src/SuperQA.Api/appsettings.Development.json` and update the connection string in `src/SuperQA.Api/appsettings.json`:
 
 ```json
 {

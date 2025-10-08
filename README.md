@@ -15,7 +15,7 @@ Super-QA is a comprehensive testing platform that combines AI-powered test gener
 | **Frontend (UI)** | Blazor WebAssembly | Interactive web app, runs client-side with C# |
 | **Backend (API)** | ASP.NET Core Web API | Handles authentication, test data, logs, requirements upload |
 | **AI / ML Layer** | MCP-based AI Services | AI-driven test generation, analysis, and self-healing |
-| **Database** | SQL Server | Stores projects, test data, logs, embeddings |
+| **Database** | SQL Server / In-Memory | Stores projects, test data, logs, embeddings |
 | **Automation** | Playwright | Executes and monitors web tests |
 | **Data Science** | Python ML/ML.NET | Defect prediction, risk scoring, analytics (Coming Soon) |
 
@@ -82,10 +82,12 @@ SuperQA/
 ## 📋 Prerequisites
 
 - [.NET 9.0 SDK](https://dotnet.microsoft.com/download)
-- [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or SQL Server LocalDB
-- [PowerShell](https://docs.microsoft.com/en-us/powershell/) (for Playwright browser installation)
-- [Node.js](https://nodejs.org/) (for MCP server - optional)
 - Modern web browser
+- *(Optional)* [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or SQL Server LocalDB for production
+- *(Optional)* [PowerShell](https://docs.microsoft.com/en-us/powershell/) (for Playwright browser installation)
+- *(Optional)* [Node.js](https://nodejs.org/) (for MCP server)
+
+**Note**: The application uses an in-memory database in development mode by default, so SQL Server is not required for local development!
 
 ## 🛠️ Setup
 
@@ -96,27 +98,15 @@ git clone https://github.com/MehediRumon/Super-QA.git
 cd Super-QA
 ```
 
-### 2. Configure Database
-
-Update the connection string in `src/SuperQA.Api/appsettings.json`:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=SuperQA;Trusted_Connection=True;MultipleActiveResultSets=true"
-  }
-}
-```
-
-### 3. Apply Database Migrations
+### 2. Build the Solution
 
 ```bash
-cd src/SuperQA.Infrastructure
-dotnet ef migrations add InitialCreate --startup-project ../SuperQA.Api
-dotnet ef database update --startup-project ../SuperQA.Api
+dotnet build
 ```
 
-### 4. Run the Application
+### 3. Run the Application
+
+**The application uses an in-memory database by default in development mode**, so you can skip the database setup steps and start right away!
 
 #### Backend API
 
@@ -136,7 +126,7 @@ dotnet run
 
 The client will be available at `https://localhost:5001`
 
-### 5. Install Playwright Browsers (For Phase 2 Test Execution)
+### 4. Install Playwright Browsers (Optional - For Test Execution)
 
 ```bash
 # After building the Infrastructure project
@@ -151,6 +141,29 @@ playwright install chromium
 ```
 
 **📖 See [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) for detailed test automation guide**
+
+### 5. (Optional) Configure SQL Server Database
+
+If you want to use SQL Server instead of the in-memory database:
+
+1. Set `UseInMemoryDatabase` to `false` in `src/SuperQA.Api/appsettings.Development.json`
+2. Update the connection string in `src/SuperQA.Api/appsettings.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=SuperQA;Trusted_Connection=True;MultipleActiveResultSets=true"
+  }
+}
+```
+
+3. Apply database migrations:
+
+```bash
+cd src/SuperQA.Infrastructure
+dotnet ef migrations add InitialCreate --startup-project ../SuperQA.Api
+dotnet ef database update --startup-project ../SuperQA.Api
+```
 
 ### 6. (Optional) Configure MCP Integration
 
