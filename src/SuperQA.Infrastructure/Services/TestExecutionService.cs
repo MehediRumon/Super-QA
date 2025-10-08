@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using SuperQA.Core.Entities;
 using SuperQA.Core.Interfaces;
@@ -9,10 +10,12 @@ namespace SuperQA.Infrastructure.Services;
 public class TestExecutionService : ITestExecutionService
 {
     private readonly SuperQADbContext _context;
+    private readonly IConfiguration _configuration;
 
-    public TestExecutionService(SuperQADbContext context)
+    public TestExecutionService(SuperQADbContext context, IConfiguration configuration)
     {
         _context = context;
+        _configuration = configuration;
     }
 
     public async Task<int> ExecuteTestAsync(int testCaseId, string? baseUrl = null)
@@ -76,9 +79,10 @@ public class TestExecutionService : ITestExecutionService
         }
 
         using var playwright = await Playwright.CreateAsync();
+        var headless = _configuration.GetValue<bool>("Playwright:Headless", true);
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = true
+            Headless = headless
         });
 
         var context = await browser.NewContextAsync();

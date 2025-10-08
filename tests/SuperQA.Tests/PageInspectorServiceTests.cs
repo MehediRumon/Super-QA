@@ -1,14 +1,27 @@
+using Microsoft.Extensions.Configuration;
 using SuperQA.Infrastructure.Services;
 
 namespace SuperQA.Tests;
 
 public class PageInspectorServiceTests
 {
+    private IConfiguration CreateConfiguration()
+    {
+        var configData = new Dictionary<string, string>
+        {
+            { "Playwright:Headless", "true" }
+        };
+        
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(configData!)
+            .Build();
+    }
+
     [Fact]
     public async Task GetPageStructureAsync_WithInvalidUrl_ReturnsErrorStructure()
     {
         // Arrange
-        var service = new PageInspectorService();
+        var service = new PageInspectorService(CreateConfiguration());
 
         // Act
         var result = await service.GetPageStructureAsync("http://invalid-url-that-does-not-exist-12345.com");
@@ -22,7 +35,7 @@ public class PageInspectorServiceTests
     public async Task GetPageStructureAsync_WithValidUrl_ReturnsJsonStructure()
     {
         // Arrange
-        var service = new PageInspectorService();
+        var service = new PageInspectorService(CreateConfiguration());
 
         // Act - Using example.com which is always available
         var result = await service.GetPageStructureAsync("http://example.com");

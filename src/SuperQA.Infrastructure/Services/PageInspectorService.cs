@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using SuperQA.Core.Interfaces;
 
@@ -6,14 +7,22 @@ namespace SuperQA.Infrastructure.Services;
 
 public class PageInspectorService : IPageInspectorService
 {
+    private readonly IConfiguration _configuration;
+
+    public PageInspectorService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
     public async Task<string> GetPageStructureAsync(string url)
     {
         try
         {
             var playwright = await Playwright.CreateAsync();
+            var headless = _configuration.GetValue<bool>("Playwright:Headless", true);
             await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
             {
-                Headless = true
+                Headless = headless
             });
             
             var page = await browser.NewPageAsync();

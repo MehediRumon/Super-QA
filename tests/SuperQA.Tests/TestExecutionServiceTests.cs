@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SuperQA.Core.Entities;
 using SuperQA.Infrastructure.Data;
 using SuperQA.Infrastructure.Services;
@@ -14,6 +15,18 @@ public class TestExecutionServiceTests
             .Options;
         
         return new SuperQADbContext(options);
+    }
+
+    private IConfiguration CreateConfiguration()
+    {
+        var configData = new Dictionary<string, string>
+        {
+            { "Playwright:Headless", "true" }
+        };
+        
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(configData!)
+            .Build();
     }
 
     [Fact]
@@ -46,7 +59,7 @@ public class TestExecutionServiceTests
         context.TestExecutions.Add(execution);
         await context.SaveChangesAsync();
 
-        var service = new TestExecutionService(context);
+        var service = new TestExecutionService(context, CreateConfiguration());
 
         // Act
         var result = await service.GetTestExecutionsAsync(1);
@@ -86,7 +99,7 @@ public class TestExecutionServiceTests
         context.TestExecutions.Add(execution);
         await context.SaveChangesAsync();
 
-        var service = new TestExecutionService(context);
+        var service = new TestExecutionService(context, CreateConfiguration());
 
         // Act
         var result = await service.GetTestExecutionAsync(1);
