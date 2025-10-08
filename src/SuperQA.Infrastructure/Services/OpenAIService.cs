@@ -34,24 +34,51 @@ DO NOT use generic selectors like 'button', 'input[type=""submit""]', or make up
 FRS: {frsText}
 URL: {applicationUrl}{pageStructureSection}
 
-Requirements:
-1. NUnit test class with necessary using statements
-2. MANDATORY: Use ONLY selectors from the page structure above - copy them exactly from the 'selector' field
-3. Setup/teardown methods for browser lifecycle
-4. Implement test actions (click, fill, navigate) per FRS
-5. Add assertions for expected behavior
+CRITICAL REQUIREMENTS:
+1. Use ONLY these exact namespaces (DO NOT use PlaywrightSharp or any other variation):
+   - using Microsoft.Playwright;
+   - using Microsoft.Playwright.NUnit;
+   - using NUnit.Framework;
+2. Your test class MUST inherit from PageTest (from Microsoft.Playwright.NUnit)
+3. MANDATORY: Use ONLY selectors from the page structure above - copy them exactly from the 'selector' field
+4. Implement test actions (click, fill, navigate) per FRS using the Page property from PageTest
+5. Add assertions for expected behavior using Expect from Microsoft.Playwright
 6. Use async/await properly
 7. NO placeholder comments like 'Modify selector...'
 8. Production-ready, executable code
 
-Output ONLY C# code, no explanations.";
+REQUIRED CODE STRUCTURE (follow this template exactly):
+```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+using NUnit.Framework;
+
+namespace PlaywrightTests;
+
+[Parallelizable(ParallelScope.Self)]
+[TestFixture]
+public class Tests : PageTest
+{{
+    [Test]
+    public async Task YourTestName()
+    {{
+        await Page.GotoAsync(""URL_HERE"");
+        // Your test steps using Page property
+        // Use await Page.ClickAsync(""selector"");
+        // Use await Page.FillAsync(""selector"", ""value"");
+        // Use await Expect(Page).ToHaveTitleAsync(...);
+    }}
+}}
+```
+
+Output ONLY C# code following the template above, no explanations or markdown.";
 
         var requestBody = new
         {
             model = model,
             messages = new[]
             {
-                new { role = "system", content = "You are a Playwright test automation engineer. Use ONLY selectors explicitly provided in the page structure." },
+                new { role = "system", content = "You are a Playwright test automation engineer. CRITICAL: Use ONLY Microsoft.Playwright namespace (NOT PlaywrightSharp). Test class MUST inherit from PageTest. Use ONLY selectors explicitly provided in the page structure." },
                 new { role = "user", content = prompt }
             },
             temperature = 0.3,
