@@ -182,6 +182,30 @@ Update `src/SuperQA.Api/appsettings.json`:
 }
 ```
 
+### 7. (Optional) Configure Playwright Browser Visibility
+
+By default, Playwright runs in **non-headless mode in development** (browser visible) so you can watch tests execute. In production, it runs in **headless mode** (browser invisible) for better performance.
+
+To change the headless setting:
+
+**Development** (`src/SuperQA.Api/appsettings.Development.json`):
+```json
+{
+  "Playwright": {
+    "Headless": false  // false = browser visible, true = browser invisible
+  }
+}
+```
+
+**Production** (`src/SuperQA.Api/appsettings.json`):
+```json
+{
+  "Playwright": {
+    "Headless": true  // Recommended for production
+  }
+}
+```
+
 ## 🧪 Running Tests
 
 ```bash

@@ -141,6 +141,23 @@ If you see CORS errors in the browser console, make sure:
 1. The API is running on the expected port (7001)
 2. The CORS policy in `src/SuperQA.Api/Program.cs` includes your client URL
 
+### Playwright Browser Visibility
+
+By default, when running tests in development mode, the browser will be visible (non-headless) so you can see what's happening during test execution.
+
+**To change this behavior:**
+
+Edit `src/SuperQA.Api/appsettings.Development.json`:
+```json
+{
+  "Playwright": {
+    "Headless": false  // Set to true to run browser in headless mode (invisible)
+  }
+}
+```
+
+**Production configuration** (in `appsettings.json`) defaults to `true` for headless execution.
+
 ## What's Next?
 
 - **Configure AI Integration**: Set up MCP to connect to real AI models
