@@ -16,7 +16,7 @@ Super-QA is a comprehensive testing platform that combines AI-powered test gener
 | **Backend (API)** | ASP.NET Core Web API | Handles authentication, test data, logs, requirements upload |
 | **AI / ML Layer** | MCP-based AI Services | AI-driven test generation, analysis, and self-healing |
 | **Database** | SQL Server | Stores projects, test data, logs, embeddings |
-| **Automation** | Selenium/Playwright | Executes and monitors web tests (Coming Soon) |
+| **Automation** | Playwright | Executes and monitors web tests |
 | **Data Science** | Python ML/ML.NET | Defect prediction, risk scoring, analytics (Coming Soon) |
 
 ### Project Structure
@@ -53,12 +53,13 @@ SuperQA/
 - ✅ **Dashboard**: View projects, requirements, and test cases
 - ✅ **RESTful API**: Full CRUD operations for projects, requirements, and test cases
 
-### Phase 2: Automation (🔄 Planned)
+### Phase 2: Automation (✅ Implemented)
 
-- 🔄 Selenium/Playwright integration
-- 🔄 Test execution engine
-- 🔄 Background worker for automated testing
-- 🔄 Test result visualization
+- ✅ **Playwright integration**: Browser automation with Playwright .NET
+- ✅ **Test execution engine**: Execute test cases automatically
+- ✅ **Background worker for automated testing**: Run tests in background
+- ✅ **Test result visualization**: View test execution results with details
+- ✅ **Screenshot capture on failure**: Automatically capture screenshots when tests fail
 
 ### Phase 3: AI Analyzer (🔄 Planned)
 
@@ -183,6 +184,14 @@ dotnet test
 - `GET /api/testcases/project/{projectId}` - Get test cases for a project
 - `POST /api/testcases/generate` - Generate test cases using AI
 
+### Test Executions
+
+- `POST /api/testexecutions/execute` - Execute a single test case
+- `GET /api/testexecutions/project/{projectId}` - Get all test executions for a project
+- `GET /api/testexecutions/{executionId}` - Get details of a specific test execution
+- `POST /api/testexecutions/project/{projectId}/run-all` - Run all tests for a project in background
+- `GET /api/testexecutions/project/{projectId}/status` - Get test run status for a project
+
 ## 🔐 Security (Coming Soon)
 
 - JWT authentication
@@ -221,8 +230,8 @@ Blazor UI → API → MCP Service → AI Model (GPT/Claude/Local)
 ## 🚧 Roadmap
 
 - [x] MVP with AI test generation
-- [ ] Selenium/Playwright integration
-- [ ] Real-time test execution
+- [x] Playwright integration
+- [x] Real-time test execution
 - [ ] ML-based defect prediction
 - [ ] Self-healing automation
 - [ ] Conversational AI assistant
