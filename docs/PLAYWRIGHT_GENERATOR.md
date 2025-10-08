@@ -36,8 +36,9 @@ Fill in the required fields in the Configuration panel:
 
 #### AI Model
 Select the OpenAI model to use:
-- **GPT-4 (Recommended)**: Best quality, most accurate test generation
-- **GPT-4 Turbo**: Faster and more cost-effective
+- **GPT-4o Mini (Recommended)**: Best balance of quality, speed and cost
+- **GPT-4o**: Latest and most capable model
+- **GPT-4 Turbo**: Fast and cost-effective
 - **GPT-3.5 Turbo**: Fastest and most economical option
 
 #### Application URL *
@@ -158,7 +159,7 @@ Request body:
   "frsText": "User Login Feature: ...",
   "applicationUrl": "https://example.com",
   "openAIApiKey": "sk-...",
-  "model": "gpt-4"
+  "model": "gpt-4o-mini"
 }
 ```
 
@@ -225,9 +226,10 @@ Make sure it works
 
 ### Model Selection
 
-- **GPT-4**: Use for complex applications or when accuracy is critical
-- **GPT-4 Turbo**: Good balance of speed and quality for most use cases
-- **GPT-3.5 Turbo**: Use for simple test scenarios or when cost is a concern
+- **GPT-4o Mini**: Best default choice - good balance of speed, quality and cost
+- **GPT-4o**: Use for most complex applications or when highest accuracy is critical
+- **GPT-4 Turbo**: Alternative high-quality option
+- **GPT-3.5 Turbo**: Use for simple test scenarios or when cost is a primary concern
 
 ### Security Notes
 
@@ -251,7 +253,7 @@ Make sure it works
 
 ### Script doesn't work as expected
 - Review and refine your FRS to be more specific
-- Try using GPT-4 instead of GPT-3.5 for better results
+- Try using GPT-4o or GPT-4 Turbo for better results
 - Manually adjust the generated script if needed
 
 ## Limitations

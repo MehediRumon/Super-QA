@@ -5,7 +5,7 @@ public class PlaywrightTestGenerationRequest
     public string FrsText { get; set; } = string.Empty;
     public string ApplicationUrl { get; set; } = string.Empty;
     public string OpenAIApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gpt-4";
+    public string Model { get; set; } = "gpt-4o-mini";
 }
 
 public class PlaywrightTestGenerationResponse
