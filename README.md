@@ -60,6 +60,9 @@ SuperQA/
 - ✅ **Background worker for automated testing**: Run tests in background
 - ✅ **Test result visualization**: View test execution results with details
 - ✅ **Screenshot capture on failure**: Automatically capture screenshots when tests fail
+- ✅ **OpenAI-Powered Playwright Test Generator**: Generate executable C# Playwright test scripts from FRS
+- ✅ **Automated test script generation**: AI generates locators, actions, and assertions
+- ✅ **Test script execution**: Execute generated Playwright scripts and view results
 
 ### Phase 3: AI Analyzer (🔄 Planned)
 
@@ -83,6 +86,7 @@ SuperQA/
 
 - [.NET 9.0 SDK](https://dotnet.microsoft.com/download)
 - Modern web browser
+- *(Optional)* [OpenAI API Key](https://platform.openai.com/api-keys) (for Playwright test generation)
 - *(Optional)* [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or SQL Server LocalDB for production
 - *(Optional)* [PowerShell](https://docs.microsoft.com/en-us/powershell/) (for Playwright browser installation)
 - *(Optional)* [Node.js](https://nodejs.org/) (for MCP server)
@@ -184,6 +188,20 @@ Update `src/SuperQA.Api/appsettings.json`:
 dotnet test
 ```
 
+## 🎭 Using the Playwright Test Generator
+
+The Playwright Test Generator allows you to generate executable C# test scripts using OpenAI's GPT models:
+
+1. **Navigate to Playwright Generator**: Click "Playwright Generator" in the navigation menu
+2. **Enter OpenAI API Key**: Provide your OpenAI API key (get one from [OpenAI Platform](https://platform.openai.com/api-keys))
+3. **Select AI Model**: Choose GPT-4 (recommended), GPT-4 Turbo, or GPT-3.5 Turbo
+4. **Enter Application URL**: Specify the URL of the application you want to test
+5. **Write FRS**: Describe the functional requirements and expected behavior
+6. **Generate**: Click "Generate Test Script" to create a Playwright C# test
+7. **Execute** (Optional): Click "Execute Test" to run the generated script and view results
+
+**📖 See [docs/PLAYWRIGHT_GENERATOR.md](docs/PLAYWRIGHT_GENERATOR.md) for detailed guide and examples**
+
 ## 📊 Database Schema
 
 ### Entities
@@ -221,6 +239,11 @@ dotnet test
 - `GET /api/testexecutions/{executionId}` - Get details of a specific test execution
 - `POST /api/testexecutions/project/{projectId}/run-all` - Run all tests for a project in background
 - `GET /api/testexecutions/project/{projectId}/status` - Get test run status for a project
+
+### Playwright Test Generator
+
+- `POST /api/playwright/generate` - Generate Playwright C# test script from FRS using OpenAI
+- `POST /api/playwright/execute` - Execute a Playwright test script and return results
 
 ## 🔐 Security (Coming Soon)
 
@@ -262,6 +285,7 @@ Blazor UI → API → MCP Service → AI Model (GPT/Claude/Local)
 - [x] MVP with AI test generation
 - [x] Playwright integration
 - [x] Real-time test execution
+- [x] OpenAI-powered Playwright test script generation
 - [ ] ML-based defect prediction
 - [ ] Self-healing automation
 - [ ] Conversational AI assistant

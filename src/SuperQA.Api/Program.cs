@@ -41,6 +41,8 @@ builder.Services.AddHttpClient<IMCPService, MCPService>();
 builder.Services.AddScoped<IAITestGeneratorService, AITestGeneratorService>();
 builder.Services.AddScoped<ITestExecutionService, TestExecutionService>();
 builder.Services.AddSingleton<IBackgroundTestRunner, BackgroundTestRunnerService>();
+builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
+builder.Services.AddScoped<IPlaywrightTestExecutor, PlaywrightTestExecutor>();
 
 var app = builder.Build();
 
