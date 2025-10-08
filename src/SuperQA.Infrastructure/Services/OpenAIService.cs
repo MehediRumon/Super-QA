@@ -21,44 +21,41 @@ public class OpenAIService : IOpenAIService
             ? "" 
             : $@"
 
-ACTUAL PAGE ELEMENTS DETECTED:
+ACTUAL PAGE ELEMENTS (USE THESE EXACT SELECTORS):
 {pageStructure}
 
-IMPORTANT: Use the ACTUAL selectors from the page elements above. DO NOT create placeholder or generic selectors. Match the exact element selectors, IDs, names, and attributes from the detected page structure.";
+CRITICAL: You MUST use ONLY the selectors from the 'selector' field above. DO NOT invent or guess selectors.
+Example: If you see {{""selector"": ""#loginBtn"", ""type"": ""button""}}, use await page.ClickAsync(""#loginBtn"");
+Example: If you see {{""selector"": ""input[name='username']"", ""type"": ""input""}}, use await page.FillAsync(""input[name='username']"", ""value"");
+DO NOT use generic selectors like 'button', 'input[type=""submit""]', or make up IDs that don't exist in the page structure.";
 
-        var prompt = $@"You are an expert test automation engineer. Generate a comprehensive Playwright test script in C# based on the following:
+        var prompt = $@"Generate a Playwright test in C# (NUnit) for:
 
-Functional Requirement Specification (FRS):
-{frsText}
+FRS: {frsText}
+URL: {applicationUrl}{pageStructureSection}
 
-Application URL: {applicationUrl}{pageStructureSection}
+Requirements:
+1. NUnit test class with necessary using statements
+2. MANDATORY: Use ONLY selectors from the page structure above - copy them exactly from the 'selector' field
+3. Setup/teardown methods for browser lifecycle
+4. Implement test actions (click, fill, navigate) per FRS
+5. Add assertions for expected behavior
+6. Use async/await properly
+7. NO placeholder comments like 'Modify selector...'
+8. Production-ready, executable code
 
-Requirements for the generated script:
-1. Create a complete C# Playwright test class using NUnit
-2. Include necessary using statements
-3. Use the ACTUAL element selectors from the page structure provided above (if available)
-4. If page structure is provided, match element selectors exactly as they appear (by ID, name, type, or class)
-5. Implement actions such as clicks, inputs, and navigation based on the FRS
-6. Add assertions derived from the FRS to validate expected behavior
-7. Use proper Playwright best practices (Page Object Model concepts where appropriate)
-8. Include setup and teardown methods
-9. Add meaningful test method names and comments
-10. Use async/await patterns properly
-11. Include proper error handling
-12. DO NOT add comments like 'Modify selector as per actual...' - use the actual selectors provided
-
-Generate ONLY the C# code without any additional explanation. The code should be production-ready and executable.";
+Output ONLY C# code, no explanations.";
 
         var requestBody = new
         {
             model = model,
             messages = new[]
             {
-                new { role = "system", content = "You are an expert test automation engineer specializing in Playwright and C#." },
+                new { role = "system", content = "You are a Playwright test automation engineer. Use ONLY selectors explicitly provided in the page structure." },
                 new { role = "user", content = prompt }
             },
-            temperature = 0.7,
-            max_tokens = 2000
+            temperature = 0.3,
+            max_tokens = 1500
         };
 
         var json = JsonSerializer.Serialize(requestBody);
