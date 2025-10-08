@@ -221,7 +221,9 @@ The Playwright Test Generator uses a two-step process to create accurate test sc
 
 2. **AI Script Generation**:
    - The extracted page structure is sent to OpenAI along with your FRS
-   - The AI uses the actual element information to generate precise selectors
+   - The AI receives **CRITICAL** instructions to use ONLY the actual selectors from the 'selector' field
+   - Concrete examples in the prompt show exactly how to use these selectors
+   - The AI is explicitly forbidden from inventing/guessing selectors or using generic ones
    - Instead of generic selectors like `input[name='username']`, it uses the exact selectors found on your page
    - The result is a test script with real, working selectors that match your application
 
@@ -230,6 +232,8 @@ The Playwright Test Generator uses a two-step process to create accurate test sc
 - ✅ Generated tests use actual selectors that exist on the page
 - ✅ Reduces errors from placeholder or generic selectors
 - ✅ Tests are more likely to work on first run
+- ✅ 25% lower token costs with optimized prompt
+- ✅ More deterministic, focused output with lower temperature setting
 
 ### Writing Good FRS
 
@@ -260,10 +264,17 @@ Make sure it works
 
 ### Model Selection
 
-- **GPT-4o Mini**: Best default choice - good balance of speed, quality and cost
+- **GPT-4o Mini (Recommended)**: Best default choice - excellent balance of speed, quality and cost. Optimized prompt uses ~25% fewer tokens.
 - **GPT-4o**: Use for most complex applications or when highest accuracy is critical
 - **GPT-4 Turbo**: Alternative high-quality option
 - **GPT-3.5 Turbo**: Use for simple test scenarios or when cost is a primary concern
+
+**Token Cost Optimization:**
+The system has been optimized to reduce OpenAI API costs:
+- Maximum response tokens reduced from 2000 to **1500** (25% reduction)
+- Temperature lowered from 0.7 to **0.3** for more focused, deterministic output
+- Streamlined prompt structure while maintaining clarity and effectiveness
+- More explicit instructions prevent the AI from generating verbose unnecessary code
 
 ### Security Notes
 

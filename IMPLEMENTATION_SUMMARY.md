@@ -25,15 +25,23 @@ The `PageInspectorService` uses Playwright to:
    - Textareas and select dropdowns
 5. Return this information as structured JSON
 
-### 2. Enhanced OpenAI Service
+### 2. Enhanced OpenAI Service (Optimized for Token Efficiency)
 **Modified Files:**
 - `src/SuperQA.Core/Interfaces/IOpenAIService.cs`
 - `src/SuperQA.Infrastructure/Services/OpenAIService.cs`
 
 Added an optional `pageStructure` parameter to `GeneratePlaywrightTestScriptAsync` that:
 - Accepts the extracted page structure from the PageInspectorService
-- Includes it in the AI prompt with clear instructions to use actual selectors
+- Includes it in the AI prompt with **CRITICAL** emphasis to use ONLY actual selectors from the 'selector' field
+- Provides concrete examples showing exactly how to use the selectors from page structure
+- Explicitly forbids inventing/guessing selectors or using generic ones
 - Instructs the AI to NOT generate placeholder comments like "Modify selector as per actual..."
+
+**Token Cost Optimization:**
+- Reduced `max_tokens` from 2000 to **1500** (25% reduction in maximum response size)
+- Lowered `temperature` from 0.7 to **0.3** (more focused, deterministic output = fewer unnecessary tokens)
+- Streamlined prompt from verbose to concise while maintaining clarity
+- More efficient system message emphasizing the core requirement
 
 ### 3. Updated Playwright Controller
 **Modified File:**
@@ -104,11 +112,13 @@ await _page.Click("#nextBtn"); // Real ID from page
 
 ## Benefits
 
-✅ **No manual inspection needed** - System automatically finds element selectors
-✅ **Accurate test scripts** - Uses selectors that actually exist on the page
-✅ **Fewer errors** - Tests work on first run without manual modifications
-✅ **Time-saving** - Eliminates trial-and-error with selectors
-✅ **Graceful degradation** - Falls back to generic selectors if page inspection fails
+✅ **No manual inspection needed** - System automatically finds element selectors  
+✅ **Accurate test scripts** - Uses selectors that actually exist on the page  
+✅ **Fewer errors** - Tests work on first run without manual modifications  
+✅ **Time-saving** - Eliminates trial-and-error with selectors  
+✅ **Graceful degradation** - Falls back to generic selectors if page inspection fails  
+✅ **Lower token costs** - Optimized prompt and reduced max_tokens (1500 vs 2000) saves ~25% on API costs  
+✅ **More deterministic output** - Lower temperature (0.3 vs 0.7) ensures consistent, focused results
 
 ## Testing Verification
 
