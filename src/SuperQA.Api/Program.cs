@@ -22,11 +22,19 @@ builder.Services.AddCors(options =>
 });
 
 // Database configuration
-builder.Services.AddDbContext<SuperQADbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection") 
-        ?? "Server=(localdb)\\mssqllocaldb;Database=SuperQA;Trusted_Connection=True;MultipleActiveResultSets=true",
-        b => b.MigrationsAssembly("SuperQA.Infrastructure")));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var useInMemoryDb = builder.Configuration.GetValue<bool>("UseInMemoryDatabase");
+
+if (useInMemoryDb || string.IsNullOrEmpty(connectionString))
+{
+    builder.Services.AddDbContext<SuperQADbContext>(options =>
+        options.UseInMemoryDatabase("SuperQA"));
+}
+else
+{
+    builder.Services.AddDbContext<SuperQADbContext>(options =>
+        options.UseSqlServer(connectionString, b => b.MigrationsAssembly("SuperQA.Infrastructure")));
+}
 
 // Register services
 builder.Services.AddHttpClient<IMCPService, MCPService>();
