@@ -83,6 +83,7 @@ SuperQA/
 
 - [.NET 9.0 SDK](https://dotnet.microsoft.com/download)
 - [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or SQL Server LocalDB
+- [PowerShell](https://docs.microsoft.com/en-us/powershell/) (for Playwright browser installation)
 - [Node.js](https://nodejs.org/) (for MCP server - optional)
 - Modern web browser
 
@@ -135,7 +136,23 @@ dotnet run
 
 The client will be available at `https://localhost:5001`
 
-### 5. (Optional) Configure MCP Integration
+### 5. Install Playwright Browsers (For Phase 2 Test Execution)
+
+```bash
+# After building the Infrastructure project
+cd src/SuperQA.Infrastructure/bin/Debug/net9.0
+pwsh playwright.ps1 install chromium
+```
+
+Or install globally:
+```bash
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install chromium
+```
+
+**📖 See [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) for detailed test automation guide**
+
+### 6. (Optional) Configure MCP Integration
 
 Update `src/SuperQA.Api/appsettings.json`:
 
