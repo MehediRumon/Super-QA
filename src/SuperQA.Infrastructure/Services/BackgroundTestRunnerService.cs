@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SuperQA.Core.Interfaces;
 using SuperQA.Infrastructure.Data;
 
@@ -6,16 +7,12 @@ namespace SuperQA.Infrastructure.Services;
 
 public class BackgroundTestRunnerService : IBackgroundTestRunner
 {
-    private readonly SuperQADbContext _context;
-    private readonly ITestExecutionService _testExecutionService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly Dictionary<int, string> _projectTestStatus = new();
 
-    public BackgroundTestRunnerService(
-        SuperQADbContext context,
-        ITestExecutionService testExecutionService)
+    public BackgroundTestRunnerService(IServiceScopeFactory serviceScopeFactory)
     {
-        _context = context;
-        _testExecutionService = testExecutionService;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     public async Task RunTestsInBackgroundAsync(int projectId)
@@ -27,7 +24,12 @@ public class BackgroundTestRunnerService : IBackgroundTestRunner
         {
             try
             {
-                var testCases = await _context.TestCases
+                // Create a new scope for this background task
+                using var scope = _serviceScopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<SuperQADbContext>();
+                var testExecutionService = scope.ServiceProvider.GetRequiredService<ITestExecutionService>();
+
+                var testCases = await context.TestCases
                     .Where(tc => tc.ProjectId == projectId)
                     .ToListAsync();
 
@@ -35,7 +37,7 @@ public class BackgroundTestRunnerService : IBackgroundTestRunner
                 {
                     try
                     {
-                        await _testExecutionService.ExecuteTestAsync(testCase.Id);
+                        await testExecutionService.ExecuteTestAsync(testCase.Id);
                     }
                     catch
                     {
