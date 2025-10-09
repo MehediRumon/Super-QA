@@ -24,7 +24,7 @@ public class GenerateTestCasesRequest
 public class GenerateAutomationScriptRequest
 {
     public int TestCaseId { get; set; }
-    public string ApplicationUrl { get; set; } = string.Empty;
+    public string? ApplicationUrl { get; set; }
     public string Framework { get; set; } = "Playwright";
 }
 

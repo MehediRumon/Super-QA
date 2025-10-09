@@ -179,4 +179,25 @@ Output ONLY C# code following the template above, no explanations or markdown.";
         sanitized = sanitized.Replace(" ", "_");
         return string.IsNullOrWhiteSpace(sanitized) ? "GeneratedTest" : sanitized;
     }
+
+    /// <summary>
+    /// Extracts URL from test case text (steps, preconditions, or description)
+    /// </summary>
+    public string? ExtractUrlFromTestCase(TestCase testCase)
+    {
+        // Combine all text fields where a URL might be mentioned
+        var textToSearch = $"{testCase.Preconditions}\n{testCase.Steps}\n{testCase.Description}";
+        
+        // Look for URLs in the text (http:// or https://)
+        var urlPattern = @"https?://[^\s\)\]\>]+";
+        var match = System.Text.RegularExpressions.Regex.Match(textToSearch, urlPattern, 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        if (match.Success)
+        {
+            return match.Value.TrimEnd('.', ',', ';'); // Remove trailing punctuation
+        }
+        
+        return null;
+    }
 }

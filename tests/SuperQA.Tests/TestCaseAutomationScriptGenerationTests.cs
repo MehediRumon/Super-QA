@@ -231,4 +231,115 @@ public class Test {}
         Assert.Contains("Playwright", result);
         Assert.Contains("// Note: Add actual implementation", result);
     }
+
+    [Fact]
+    public void ExtractUrlFromTestCase_WithUrlInSteps_ReturnsUrl()
+    {
+        // Arrange
+        var testCase = new TestCase
+        {
+            Id = 1,
+            Title = "Login Test",
+            Description = "Test login functionality",
+            Preconditions = "User has valid credentials",
+            Steps = "1. Navigate to https://example.com/login\n2. Enter username\n3. Click submit",
+            ExpectedResults = "User is logged in",
+            ProjectId = 1
+        };
+
+        // Act
+        var url = _service.ExtractUrlFromTestCase(testCase);
+
+        // Assert
+        Assert.Equal("https://example.com/login", url);
+    }
+
+    [Fact]
+    public void ExtractUrlFromTestCase_WithUrlInPreconditions_ReturnsUrl()
+    {
+        // Arrange
+        var testCase = new TestCase
+        {
+            Id = 1,
+            Title = "Test",
+            Description = "Description",
+            Preconditions = "User is on http://localhost:5000/home page",
+            Steps = "1. Click button",
+            ExpectedResults = "Action completed",
+            ProjectId = 1
+        };
+
+        // Act
+        var url = _service.ExtractUrlFromTestCase(testCase);
+
+        // Assert
+        Assert.Equal("http://localhost:5000/home", url);
+    }
+
+    [Fact]
+    public void ExtractUrlFromTestCase_WithUrlInDescription_ReturnsUrl()
+    {
+        // Arrange
+        var testCase = new TestCase
+        {
+            Id = 1,
+            Title = "Test",
+            Description = "Test the application at https://app.example.com/dashboard",
+            Preconditions = "Prerequisites",
+            Steps = "1. Perform action",
+            ExpectedResults = "Expected outcome",
+            ProjectId = 1
+        };
+
+        // Act
+        var url = _service.ExtractUrlFromTestCase(testCase);
+
+        // Assert
+        Assert.Equal("https://app.example.com/dashboard", url);
+    }
+
+    [Fact]
+    public void ExtractUrlFromTestCase_WithNoUrl_ReturnsNull()
+    {
+        // Arrange
+        var testCase = new TestCase
+        {
+            Id = 1,
+            Title = "Test",
+            Description = "No URL here",
+            Preconditions = "No URL",
+            Steps = "1. Do something\n2. Verify result",
+            ExpectedResults = "Test passes",
+            ProjectId = 1
+        };
+
+        // Act
+        var url = _service.ExtractUrlFromTestCase(testCase);
+
+        // Assert
+        Assert.Null(url);
+    }
+
+    [Fact]
+    public void ExtractUrlFromTestCase_WithUrlAndTrailingPunctuation_RemovesPunctuation()
+    {
+        // Arrange
+        var testCase = new TestCase
+        {
+            Id = 1,
+            Title = "Test",
+            Description = "Test description",
+            Preconditions = "User is ready",
+            Steps = "Navigate to https://example.com/login, then click the button at https://example.com/dashboard.",
+            ExpectedResults = "Expected outcome",
+            ProjectId = 1
+        };
+
+        // Act
+        var url = _service.ExtractUrlFromTestCase(testCase);
+
+        // Assert
+        // Should get the first URL found and remove trailing punctuation
+        Assert.Equal("https://example.com/login", url);
+    }
 }

@@ -96,12 +96,19 @@ public class TestCasesController : ControllerBase
                     ErrorMessage = "Test case not found" 
                 });
 
-            // Validate application URL
-            if (string.IsNullOrWhiteSpace(request.ApplicationUrl))
+            // Try to extract URL from test case first, fall back to provided ApplicationUrl
+            string? urlToInspect = _aiTestGenerator.ExtractUrlFromTestCase(testCase);
+            if (string.IsNullOrWhiteSpace(urlToInspect))
+            {
+                urlToInspect = request.ApplicationUrl;
+            }
+
+            // Validate we have a URL to work with
+            if (string.IsNullOrWhiteSpace(urlToInspect))
                 return BadRequest(new GenerateAutomationScriptResponse 
                 { 
                     Success = false, 
-                    ErrorMessage = "Application URL is required" 
+                    ErrorMessage = "Application URL is required (either provide it in the request or include a URL in the test case steps/preconditions)" 
                 });
 
             // Inspect the actual page to get real selectors
@@ -109,7 +116,8 @@ public class TestCasesController : ControllerBase
             string? inspectionWarning = null;
             try
             {
-                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl);
+                Console.WriteLine($"Inspecting page at: {urlToInspect}");
+                pageStructure = await _pageInspectorService.GetPageStructureAsync(urlToInspect);
                 
                 // Check if page inspection returned an error
                 if (pageStructure != null && pageStructure.Contains("\"error\""))
@@ -118,6 +126,10 @@ public class TestCasesController : ControllerBase
                         "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
                     Console.WriteLine($"WARNING: {inspectionWarning}");
                     pageStructure = null; // Don't send error structure to AI
+                }
+                else
+                {
+                    Console.WriteLine($"Successfully inspected page and collected {(pageStructure?.Length ?? 0)} characters of element data");
                 }
             }
             catch (Exception ex)
