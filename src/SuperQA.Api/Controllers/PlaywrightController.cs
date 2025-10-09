@@ -65,7 +65,8 @@ public class PlaywrightController : ControllerBase
             {
                 // If page inspection fails, continue without it
                 // The AI will generate generic selectors
-                inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors.";
+                inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. " +
+                    "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
                 Console.WriteLine($"Page inspection failed: {ex.Message}");
             }
 
