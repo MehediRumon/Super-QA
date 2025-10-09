@@ -63,6 +63,7 @@ SuperQA/
 - ✅ **OpenAI-Powered Playwright Test Generator**: Generate executable C# Playwright test scripts from FRS
 - ✅ **Automated test script generation**: AI generates locators, actions, and assertions
 - ✅ **Test script execution**: Execute generated Playwright scripts and view results
+- ✅ **Test Case Automation Script Generation**: Generate Playwright automation scripts from test cases with actual page element inspection
 
 ### Phase 3: AI Analyzer (🔄 Planned)
 
@@ -190,6 +191,7 @@ If you encounter errors during installation:
 **📖 Documentation**:
 - [Quick Reference: Browser Installation](docs/QUICK_REFERENCE_BROWSERS.md) - Quick setup guide
 - [Troubleshooting Guide](docs/TROUBLESHOOTING_PLAYWRIGHT.md) - Common issues and solutions
+- [Test Case Automation](docs/TEST_CASE_AUTOMATION.md) - Generate automation scripts from test cases
 - [CI/CD Setup](docs/CI_CD_SETUP.md) - GitHub Actions, Azure DevOps, GitLab CI
 - [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) - Complete test automation guide
 
