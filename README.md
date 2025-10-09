@@ -165,7 +165,11 @@ pwsh playwright.ps1 install chromium
 
 **Note**: Without browsers installed, the AI test generator will still work but will generate generic selectors instead of extracting actual element selectors from your application pages.
 
-**📖 See [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) for detailed test automation guide**
+**📖 Documentation**:
+- [Quick Reference: Browser Installation](docs/QUICK_REFERENCE_BROWSERS.md) - Quick setup guide
+- [Troubleshooting Guide](docs/TROUBLESHOOTING_PLAYWRIGHT.md) - Common issues and solutions
+- [CI/CD Setup](docs/CI_CD_SETUP.md) - GitHub Actions, Azure DevOps, GitLab CI
+- [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) - Complete test automation guide
 
 ### 5. (Optional) Configure SQL Server Database
 
