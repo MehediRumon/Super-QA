@@ -143,7 +143,7 @@ The API now returns warnings in the response:
   "success": true,
   "generatedScript": "... C# code ...",
   "warnings": [
-    "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed."
+    "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed (run 'playwright install chromium')."
   ]
 }
 ```
