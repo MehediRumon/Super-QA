@@ -13,6 +13,7 @@ public class PlaywrightTestGenerationResponse
     public string GeneratedScript { get; set; } = string.Empty;
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
+    public string[]? Warnings { get; set; }
 }
 
 public class PlaywrightTestExecutionRequest

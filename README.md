@@ -130,21 +130,46 @@ dotnet run
 
 The client will be available at `https://localhost:5001`
 
-### 4. Install Playwright Browsers (Optional - For Test Execution)
+### 4. Install Playwright Browsers (Required for AI Test Generation & Execution)
+
+**⚠️ IMPORTANT**: Playwright browsers are **required** for:
+- AI-powered test script generation with actual page elements
+- Test execution and automation
+
+**Quick Setup (Recommended)**:
 
 ```bash
-# After building the Infrastructure project
+# Linux/macOS
+./scripts/install-playwright-browsers.sh
+
+# Windows
+.\scripts\install-playwright-browsers.ps1
+```
+
+**Manual Installation**:
+
+```bash
+# Install Playwright CLI globally
+dotnet tool install --global Microsoft.Playwright.CLI
+
+# Install Chromium browser
+playwright install chromium
+```
+
+**Alternative (Project-specific)**:
+```bash
+# After building the project
 cd src/SuperQA.Infrastructure/bin/Debug/net9.0
 pwsh playwright.ps1 install chromium
 ```
 
-Or install globally:
-```bash
-dotnet tool install --global Microsoft.Playwright.CLI
-playwright install chromium
-```
+**Note**: Without browsers installed, the AI test generator will still work but will generate generic selectors instead of extracting actual element selectors from your application pages.
 
-**📖 See [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) for detailed test automation guide**
+**📖 Documentation**:
+- [Quick Reference: Browser Installation](docs/QUICK_REFERENCE_BROWSERS.md) - Quick setup guide
+- [Troubleshooting Guide](docs/TROUBLESHOOTING_PLAYWRIGHT.md) - Common issues and solutions
+- [CI/CD Setup](docs/CI_CD_SETUP.md) - GitHub Actions, Azure DevOps, GitLab CI
+- [PHASE2_QUICKSTART.md](PHASE2_QUICKSTART.md) - Complete test automation guide
 
 ### 5. (Optional) Configure SQL Server Database
 
