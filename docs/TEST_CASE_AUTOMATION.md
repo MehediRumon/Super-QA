@@ -15,9 +15,14 @@ When you generate an automation script for a test case, the system follows these
    - Test Steps
    - Expected Results
 
-2. **Page Inspection** (Automatic):
+2. **URL Detection**:
+   - The system first attempts to extract the application URL from your test case (steps, preconditions, or description)
+   - If no URL is found in the test case, it uses the `applicationUrl` from the request
+   - This allows for automatic page inspection based on the test case content
+
+3. **Page Inspection** (Automatic):
    - Launches a Playwright browser (Chromium in headless mode by default)
-   - Navigates to your application URL
+   - Navigates to the detected or provided application URL
    - Inspects the page to identify all interactive elements:
      - Input fields (with ID, name, placeholder, type)
      - Buttons (with ID, name, text)
@@ -25,12 +30,12 @@ When you generate an automation script for a test case, the system follows these
      - Textareas and dropdowns
    - Extracts actual element selectors
 
-3. **AI Script Generation**:
+4. **AI Script Generation**:
    - Sends the test case information along with actual page selectors to the AI
    - The AI generates a Playwright test script using the **exact selectors** from your page
    - The generated script follows the C# NUnit + Microsoft.Playwright pattern
 
-4. **Script Storage**:
+5. **Script Storage**:
    - The generated automation script is automatically saved to the test case's `AutomationScript` field
    - You can execute or modify the script as needed
 
@@ -51,8 +56,16 @@ When you generate an automation script for a test case, the system follows these
 
 **Parameters**:
 - `testCaseId` (required): The ID of the test case to generate an automation script for
-- `applicationUrl` (required): The URL of your application to inspect
+- `applicationUrl` (optional): The URL of your application to inspect. If not provided, the system will attempt to extract the URL from the test case steps, preconditions, or description
 - `framework` (optional): The automation framework (currently only "Playwright" is supported, defaults to "Playwright")
+
+**URL Auto-Detection**:
+The system can automatically extract the application URL from your test case if it's mentioned in:
+- Test Steps (e.g., "1. Navigate to https://example.com/login")
+- Preconditions (e.g., "User is on https://example.com/home")
+- Description (e.g., "Test login at https://example.com/login")
+
+If a URL is found in the test case, it will be used for page inspection. Otherwise, the `applicationUrl` parameter is required.
 
 **Response**:
 ```json
@@ -83,12 +96,14 @@ When you generate an automation script for a test case, the system follows these
 **Title**: User Login Test
 
 **Steps**:
-1. Navigate to the login page
+1. Navigate to https://your-app.com/login
 2. Enter username in the username field
 3. Enter password in the password field
 4. Click the login button
 
 **Expected Results**: User is successfully logged in and redirected to the dashboard
+
+**Note**: The URL `https://your-app.com/login` in step 1 will be automatically detected and used for page inspection, so you don't need to provide `applicationUrl` in the API request.
 
 ### Generated Script (with Page Inspection)
 
