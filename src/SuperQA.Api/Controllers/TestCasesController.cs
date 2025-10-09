@@ -122,7 +122,8 @@ public class TestCasesController : ControllerBase
                 // Check if page inspection returned an error
                 if (pageStructure != null && pageStructure.Contains("\"error\""))
                 {
-                    inspectionWarning = "⚠️ Page inspection failed. The automation script will be generated with generic selectors. " +
+                    inspectionWarning = "⚠️ NOT getting actual elements from your page. Page inspection failed. " +
+                        "The automation script will be generated with generic/placeholder selectors instead of your actual page elements. " +
                         "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
                     Console.WriteLine($"WARNING: {inspectionWarning}");
                     pageStructure = null; // Don't send error structure to AI
@@ -135,7 +136,8 @@ public class TestCasesController : ControllerBase
             catch (Exception ex)
             {
                 // If page inspection fails, continue without it
-                inspectionWarning = "⚠️ Page inspection failed. The automation script will be generated with generic selectors. " +
+                inspectionWarning = "⚠️ NOT getting actual elements from your page. Page inspection failed. " +
+                    "The automation script will be generated with generic/placeholder selectors instead of your actual page elements. " +
                     "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
                 Console.WriteLine($"Page inspection failed: {ex.Message}");
             }
