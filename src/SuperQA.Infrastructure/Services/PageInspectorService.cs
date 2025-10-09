@@ -21,20 +21,6 @@ public class PageInspectorService : IPageInspectorService
         {
             return await InspectOnceAsync(url);
         }
-        catch (Exception ex) when (IsBrowserNotInstalled(ex))
-        {
-            // Attempt to install browsers, then retry once
-            try
-            {
-                TryInstallChromium();
-                return await InspectOnceAsync(url);
-            }
-            catch (Exception retryEx)
-            {
-                var errorMessage = BuildMissingBrowserMessage(retryEx.Message);
-                return JsonSerializer.Serialize(new[] { new { error = $"Failed to inspect page: {errorMessage}" } });
-            }
-        }
         catch (Exception ex)
         {
             // Provide helpful error message if browsers aren't installed
@@ -43,6 +29,7 @@ public class PageInspectorService : IPageInspectorService
             {
                 errorMessage = BuildMissingBrowserMessage(errorMessage);
             }
+            Console.WriteLine($"Page inspection failed: {errorMessage}");
             return JsonSerializer.Serialize(new[] { new { error = $"Failed to inspect page: {errorMessage}" } });
         }
     }
@@ -121,21 +108,21 @@ public class PageInspectorService : IPageInspectorService
             || (msg.Contains("Failed to launch", StringComparison.OrdinalIgnoreCase) && msg.Contains("download", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static void TryInstallChromium()
-    {
-        try
-        {
-            // Install Chromium for the current Playwright version used by the app
-            _ = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
-        }
-        catch
-        {
-            // Swallow exceptions; we'll report failure on retry if it still can't launch
-        }
-    }
-
     private static string BuildMissingBrowserMessage(string baseMsg)
     {
-        return "Playwright browsers are not installed. Please install by running: 'dotnet tool install --global Microsoft.Playwright.CLI' and 'playwright install chromium'. Original: " + baseMsg;
+        return @"Playwright browsers are not installed. 
+
+REQUIRED STEPS TO FIX:
+1. Install the Playwright CLI globally:
+   dotnet tool install --global Microsoft.Playwright.CLI
+
+2. Install Chromium browser:
+   playwright install chromium
+
+3. Restart the application
+
+For detailed instructions, see: docs/TROUBLESHOOTING_PLAYWRIGHT.md
+
+Original error: " + baseMsg;
     }
 }
