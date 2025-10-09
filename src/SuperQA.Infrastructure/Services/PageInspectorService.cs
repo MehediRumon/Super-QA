@@ -61,9 +61,43 @@ public class PageInspectorService : IPageInspectorService
     private static string[] ExtractKeywords(string? frs)
     {
         if (string.IsNullOrWhiteSpace(frs)) return Array.Empty<string>();
+        
+        // Extract meaningful keywords from FRS text dynamically
         var text = frs.ToLowerInvariant();
-        var candidates = new[] { "login","log in","sign in","register","sign up","email","password","search","submit","save","cancel","user","username","next","continue" };
-        return candidates.Where(k => text.Contains(k)).Distinct().ToArray();
+        
+        // Common stop words to filter out
+        var stopWords = new HashSet<string> { 
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", 
+            "of", "with", "by", "from", "as", "is", "was", "are", "be", "has", 
+            "have", "had", "do", "does", "did", "will", "would", "should", "could",
+            "this", "that", "these", "those", "it", "its", "we", "you", "they", "them",
+            "then", "when", "where", "who", "what", "which", "how", "can", "may", "must"
+        };
+        
+        // Split text into words and extract meaningful keywords
+        var words = Regex.Split(text, @"[^a-z0-9]+")
+            .Where(w => w.Length >= 3) // At least 3 characters
+            .Where(w => !stopWords.Contains(w))
+            .Distinct()
+            .ToArray();
+        
+        // Also extract common phrases (2-3 words)
+        var phrases = new List<string>();
+        var originalWords = Regex.Split(frs, @"[^a-zA-Z0-9\s]+");
+        for (int i = 0; i < originalWords.Length - 1; i++)
+        {
+            var word1 = originalWords[i].Trim().ToLowerInvariant();
+            var word2 = originalWords[i + 1].Trim().ToLowerInvariant();
+            if (word1.Length >= 3 && word2.Length >= 3 && !stopWords.Contains(word1) && !stopWords.Contains(word2))
+            {
+                phrases.Add($"{word1} {word2}");
+            }
+        }
+        
+        // Combine words and phrases, prioritize longer matches
+        var allKeywords = phrases.Concat(words).Distinct().ToArray();
+        
+        return allKeywords;
     }
 
     private async Task<string> InspectOnceAsync(string url, string? frsText)
