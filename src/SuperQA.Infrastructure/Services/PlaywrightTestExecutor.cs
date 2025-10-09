@@ -43,14 +43,18 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 var addPackageResult = await RunCommandAsync("dotnet", "add package Microsoft.Playwright.NUnit", projectPath);
                 logs.Add(addPackageResult);
 
-                // Inject headless configuration into the test script
+                // Get headless configuration
                 var headless = _configuration.GetValue<bool>("Playwright:Headless", true);
-                var modifiedTestScript = InjectHeadlessConfiguration(testScript, headless);
-
-                // Write the test script
+                
+                // Write the test script (no modification needed - headless will be controlled via runsettings)
                 var testFilePath = Path.Combine(projectPath, "GeneratedTest.cs");
-                await File.WriteAllTextAsync(testFilePath, modifiedTestScript);
+                await File.WriteAllTextAsync(testFilePath, testScript);
                 logs.Add($"Test script written to: {testFilePath} (Headless: {headless})");
+
+                // Create .runsettings file to control headless mode
+                var runSettingsPath = Path.Combine(projectPath, "test.runsettings");
+                await CreateRunSettingsFileAsync(runSettingsPath, headless);
+                logs.Add($"RunSettings file created at: {runSettingsPath}");
 
                 // Build the project first (required before installing browsers)
                 logs.Add("Building test project...");
@@ -62,9 +66,9 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 var installBrowsersResult = await InstallPlaywrightBrowsersAsync(projectPath);
                 logs.Add(installBrowsersResult);
 
-                // Run the tests
+                // Run the tests with the runsettings file
                 logs.Add("Executing tests...");
-                var testResult = await RunCommandAsync("dotnet", "test --logger:\"console;verbosity=detailed\"", projectPath);
+                var testResult = await RunCommandAsync("dotnet", $"test --settings test.runsettings --logger:\"console;verbosity=detailed\"", projectPath);
                 logs.Add(testResult);
 
                 // Determine pass/fail based on test output
@@ -167,40 +171,19 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
         }
     }
 
-    private string InjectHeadlessConfiguration(string testScript, bool headless)
+    private async Task CreateRunSettingsFileAsync(string runSettingsPath, bool headless)
     {
-        // Check if the test inherits from PageTest (the standard pattern from AI-generated tests)
-        if (testScript.Contains(": PageTest"))
-        {
-            // Add a SetUp method that configures browser options before each test
-            // We need to insert this after the class declaration but before the first test method
-            
-            var setupMethod = $@"
-    [SetUp]
-    public async Task Setup()
-    {{
-        // Configure browser launch options to control headless mode
-        BrowserNewContextOptions = new BrowserNewContextOptions();
-        BrowserTypeLaunchOptions = new BrowserTypeLaunchOptions
-        {{
-            Headless = {headless.ToString().ToLower()}
-        }};
-    }}
-";
-            
-            // Find the position to insert the setup method
-            // Look for the test class opening brace and insert after it
-            var classPattern = @"public class \w+ : PageTest\s*\{";
-            var match = System.Text.RegularExpressions.Regex.Match(testScript, classPattern);
-            
-            if (match.Success)
-            {
-                var insertPosition = match.Index + match.Length;
-                testScript = testScript.Insert(insertPosition, setupMethod);
-            }
-        }
+        var runSettingsContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<RunSettings>
+  <Playwright>
+    <BrowserName>chromium</BrowserName>
+    <LaunchOptions>
+      <Headless>{headless.ToString().ToLower()}</Headless>
+    </LaunchOptions>
+  </Playwright>
+</RunSettings>";
         
-        return testScript;
+        await File.WriteAllTextAsync(runSettingsPath, runSettingsContent);
     }
 
     private async Task<string> RunCommandAsync(string command, string arguments, string workingDirectory)
