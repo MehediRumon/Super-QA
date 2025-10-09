@@ -155,8 +155,19 @@ public class PageInspectorService : IPageInspectorService
         }
         catch (Exception ex)
         {
+            // Provide helpful error message if browsers aren't installed
+            var errorMessage = ex.Message;
+            if (errorMessage.Contains("Executable doesn't exist") || errorMessage.Contains("Browser is not installed"))
+            {
+                errorMessage = "Playwright browsers are not installed. " +
+                    "Please install browsers by running: " +
+                    "'dotnet tool install --global Microsoft.Playwright.CLI && playwright install chromium' " +
+                    "or 'pwsh bin/Debug/net9.0/playwright.ps1 install chromium'. " +
+                    "Without browsers, the AI will generate generic selectors instead of actual page elements.";
+            }
+            
             // Return empty structure if inspection fails
-            return $"[{{\"error\": \"Failed to inspect page: {ex.Message}\"}}]";
+            return $"[{{\"error\": \"Failed to inspect page: {errorMessage}\"}}]";
         }
     }
 }
