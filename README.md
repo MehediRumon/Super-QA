@@ -132,9 +132,10 @@ The client will be available at `https://localhost:5001`
 
 ### 4. Install Playwright Browsers (Required for AI Test Generation & Execution)
 
-**⚠️ IMPORTANT**: Playwright browsers are **required** for:
-- AI-powered test script generation with actual page elements
-- Test execution and automation
+**⚠️ CRITICAL REQUIREMENT**: Playwright browsers **MUST be installed** for:
+- ✅ AI-powered test script generation with **actual page elements** (recommended)
+- ✅ Test execution and automation
+- ❌ Without browsers: AI will generate generic selectors (not recommended)
 
 **Quick Setup (Recommended)**:
 
@@ -149,21 +150,42 @@ The client will be available at `https://localhost:5001`
 **Manual Installation**:
 
 ```bash
-# Install Playwright CLI globally
+# 1. Install Playwright CLI globally
 dotnet tool install --global Microsoft.Playwright.CLI
 
-# Install Chromium browser
+# 2. Add to PATH (Linux/macOS)
+export PATH="$PATH:$HOME/.dotnet/tools"
+
+# 2. Add to PATH (Windows PowerShell)
+$env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+
+# 3. Install Chromium browser
 playwright install chromium
 ```
 
-**Alternative (Project-specific)**:
+**Verify Installation**:
 ```bash
-# After building the project
-cd src/SuperQA.Infrastructure/bin/Debug/net9.0
-pwsh playwright.ps1 install chromium
+# Check CLI version
+playwright --version
+
+# Verify browsers installed (Linux/macOS)
+ls ~/.cache/ms-playwright/
+
+# Verify browsers installed (Windows)
+dir $env:USERPROFILE\.cache\ms-playwright\
 ```
 
-**Note**: Without browsers installed, the AI test generator will still work but will generate generic selectors instead of extracting actual element selectors from your application pages.
+**🚨 Troubleshooting**:
+
+If you encounter errors during installation:
+1. The installation may complete despite showing JavaScript errors
+2. Verify browsers were installed using the commands above
+3. See [Troubleshooting Guide](docs/TROUBLESHOOTING_PLAYWRIGHT.md) for detailed help
+
+**Without Browser Installation**:
+- ⚠️ The AI test generator will work but use **generic selectors**
+- ⚠️ Generated tests will likely **require manual adjustment**
+- ⚠️ You'll see warnings in the API response
 
 **📖 Documentation**:
 - [Quick Reference: Browser Installation](docs/QUICK_REFERENCE_BROWSERS.md) - Quick setup guide
