@@ -62,7 +62,7 @@ chromium_headless_shell-1148/
 ### Test in Application
 When generating a test script, if you see this warning in the API response:
 
-> ⚠️ Page inspection failed. The AI will generate test scripts with generic selectors.
+> ⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed (run 'playwright install chromium').
 
 This means browsers are **not installed** or **not accessible**.
 
