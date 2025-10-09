@@ -25,50 +25,30 @@ public class PlaywrightController : ControllerBase
         try
         {
             if (string.IsNullOrWhiteSpace(request.FrsText))
-                return BadRequest(new PlaywrightTestGenerationResponse 
-                { 
-                    Success = false, 
-                    ErrorMessage = "FRS text is required" 
-                });
+                return BadRequest(new PlaywrightTestGenerationResponse { Success = false, ErrorMessage = "FRS text is required" });
 
             if (string.IsNullOrWhiteSpace(request.ApplicationUrl))
-                return BadRequest(new PlaywrightTestGenerationResponse 
-                { 
-                    Success = false, 
-                    ErrorMessage = "Application URL is required" 
-                });
+                return BadRequest(new PlaywrightTestGenerationResponse { Success = false, ErrorMessage = "Application URL is required" });
 
             if (string.IsNullOrWhiteSpace(request.OpenAIApiKey))
-                return BadRequest(new PlaywrightTestGenerationResponse 
-                { 
-                    Success = false, 
-                    ErrorMessage = "OpenAI API key is required" 
-                });
+                return BadRequest(new PlaywrightTestGenerationResponse { Success = false, ErrorMessage = "OpenAI API key is required" });
 
-            // Inspect the actual page to get real selectors
             string? pageStructure = null;
             string? inspectionWarning = null;
             try
             {
-                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl);
-                
-                // Check if page inspection returned an error
+                // Pass FRS to inspector to focus on relevant elements
+                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl, request.FrsText);
                 if (pageStructure != null && pageStructure.Contains("\"error\""))
                 {
-                    inspectionWarning = "⚠️ NOT getting actual elements from your page. Page inspection failed. " +
-                        "The AI will generate test scripts with generic/placeholder selectors instead of your actual page elements. " +
-                        "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
+                    inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
                     Console.WriteLine($"WARNING: {inspectionWarning}");
-                    pageStructure = null; // Don't send error structure to AI
+                    pageStructure = null;
                 }
             }
             catch (Exception ex)
             {
-                // If page inspection fails, continue without it
-                // The AI will generate generic selectors
-                inspectionWarning = "⚠️ NOT getting actual elements from your page. Page inspection failed. " +
-                    "The AI will generate test scripts with generic/placeholder selectors instead of your actual page elements. " +
-                    "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
+                inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
                 Console.WriteLine($"Page inspection failed: {ex.Message}");
             }
 
@@ -102,17 +82,9 @@ public class PlaywrightController : ControllerBase
         try
         {
             if (string.IsNullOrWhiteSpace(request.TestScript))
-                return BadRequest(new PlaywrightTestExecutionResponse 
-                { 
-                    Success = false, 
-                    Status = "Error",
-                    ErrorMessage = "Test script is required" 
-                });
+                return BadRequest(new PlaywrightTestExecutionResponse { Success = false, Status = "Error", ErrorMessage = "Test script is required" });
 
-            var result = await _playwrightTestExecutor.ExecuteTestScriptAsync(
-                request.TestScript,
-                request.ApplicationUrl);
-
+            var result = await _playwrightTestExecutor.ExecuteTestScriptAsync(request.TestScript, request.ApplicationUrl);
             return Ok(result);
         }
         catch (Exception ex)
