@@ -286,6 +286,23 @@ The system has been optimized to reduce OpenAI API costs:
 
 ## Troubleshooting
 
+### "AI generating generic selectors instead of actual page elements"
+
+**This is the most common issue!** If the AI is generating test scripts with generic selectors like `input[name='username']` or `button[type='submit']` instead of your actual element IDs, **Playwright browsers are not installed**.
+
+**Solution:**
+```bash
+# Quick fix - run the installation script
+./scripts/install-playwright-browsers.sh  # Linux/macOS
+.\scripts\install-playwright-browsers.ps1  # Windows
+
+# Or install manually
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install chromium
+```
+
+**📖 See [TROUBLESHOOTING_PLAYWRIGHT.md](TROUBLESHOOTING_PLAYWRIGHT.md) for detailed troubleshooting steps.**
+
 ### "Error generating test script"
 - Verify your OpenAI API key is valid
 - Check your OpenAI account has available credits
@@ -294,7 +311,7 @@ The system has been optimized to reduce OpenAI API costs:
 ### "Test execution failed"
 - Verify the generated script syntax is valid
 - Check that the application URL is accessible
-- Ensure Playwright is properly installed
+- Ensure Playwright browsers are installed (see above)
 - Review execution logs for specific errors
 - Check browser configuration (headless/headed mode) in appsettings.json
 

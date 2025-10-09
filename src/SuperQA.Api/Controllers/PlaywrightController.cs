@@ -47,14 +47,25 @@ public class PlaywrightController : ControllerBase
 
             // Inspect the actual page to get real selectors
             string? pageStructure = null;
+            string? inspectionWarning = null;
             try
             {
                 pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl);
+                
+                // Check if page inspection returned an error
+                if (pageStructure != null && pageStructure.Contains("\"error\""))
+                {
+                    inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. " +
+                        "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
+                    Console.WriteLine($"WARNING: {inspectionWarning}");
+                    pageStructure = null; // Don't send error structure to AI
+                }
             }
             catch (Exception ex)
             {
                 // If page inspection fails, continue without it
                 // The AI will generate generic selectors
+                inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors.";
                 Console.WriteLine($"Page inspection failed: {ex.Message}");
             }
 
@@ -68,7 +79,8 @@ public class PlaywrightController : ControllerBase
             return Ok(new PlaywrightTestGenerationResponse
             {
                 Success = true,
-                GeneratedScript = generatedScript
+                GeneratedScript = generatedScript,
+                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null
             });
         }
         catch (Exception ex)
