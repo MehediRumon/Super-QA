@@ -13,11 +13,13 @@ public class TestCasesController : ControllerBase
 {
     private readonly SuperQADbContext _context;
     private readonly IAITestGeneratorService _aiTestGenerator;
+    private readonly IPageInspectorService _pageInspectorService;
 
-    public TestCasesController(SuperQADbContext context, IAITestGeneratorService aiTestGenerator)
+    public TestCasesController(SuperQADbContext context, IAITestGeneratorService aiTestGenerator, IPageInspectorService pageInspectorService)
     {
         _context = context;
         _aiTestGenerator = aiTestGenerator;
+        _pageInspectorService = pageInspectorService;
     }
 
     [HttpGet("project/{projectId}")]
@@ -78,5 +80,79 @@ public class TestCasesController : ControllerBase
         });
 
         return Ok(dtos);
+    }
+
+    [HttpPost("generate-automation-script")]
+    public async Task<ActionResult<GenerateAutomationScriptResponse>> GenerateAutomationScript([FromBody] GenerateAutomationScriptRequest request)
+    {
+        try
+        {
+            // Validate test case exists
+            var testCase = await _context.TestCases.FindAsync(request.TestCaseId);
+            if (testCase == null)
+                return NotFound(new GenerateAutomationScriptResponse 
+                { 
+                    Success = false, 
+                    ErrorMessage = "Test case not found" 
+                });
+
+            // Validate application URL
+            if (string.IsNullOrWhiteSpace(request.ApplicationUrl))
+                return BadRequest(new GenerateAutomationScriptResponse 
+                { 
+                    Success = false, 
+                    ErrorMessage = "Application URL is required" 
+                });
+
+            // Inspect the actual page to get real selectors
+            string? pageStructure = null;
+            string? inspectionWarning = null;
+            try
+            {
+                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl);
+                
+                // Check if page inspection returned an error
+                if (pageStructure != null && pageStructure.Contains("\"error\""))
+                {
+                    inspectionWarning = "⚠️ Page inspection failed. The automation script will be generated with generic selectors. " +
+                        "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
+                    Console.WriteLine($"WARNING: {inspectionWarning}");
+                    pageStructure = null; // Don't send error structure to AI
+                }
+            }
+            catch (Exception ex)
+            {
+                // If page inspection fails, continue without it
+                inspectionWarning = "⚠️ Page inspection failed. The automation script will be generated with generic selectors. " +
+                    "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
+                Console.WriteLine($"Page inspection failed: {ex.Message}");
+            }
+
+            // Generate the automation script
+            var automationScript = await _aiTestGenerator.GenerateAutomationScriptAsync(
+                testCase,
+                request.Framework,
+                pageStructure);
+
+            // Update the test case with the generated script
+            testCase.AutomationScript = automationScript;
+            testCase.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new GenerateAutomationScriptResponse
+            {
+                Success = true,
+                AutomationScript = automationScript,
+                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new GenerateAutomationScriptResponse
+            {
+                Success = false,
+                ErrorMessage = $"Error generating automation script: {ex.Message}"
+            });
+        }
     }
 }
