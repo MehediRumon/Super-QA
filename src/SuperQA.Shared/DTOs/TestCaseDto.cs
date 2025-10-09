@@ -20,3 +20,18 @@ public class GenerateTestCasesRequest
 {
     public int RequirementId { get; set; }
 }
+
+public class GenerateAutomationScriptRequest
+{
+    public int TestCaseId { get; set; }
+    public string ApplicationUrl { get; set; } = string.Empty;
+    public string Framework { get; set; } = "Playwright";
+}
+
+public class GenerateAutomationScriptResponse
+{
+    public bool Success { get; set; }
+    public string AutomationScript { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public string[]? Warnings { get; set; }
+}

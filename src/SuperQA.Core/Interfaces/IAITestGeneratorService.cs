@@ -5,5 +5,5 @@ namespace SuperQA.Core.Interfaces;
 public interface IAITestGeneratorService
 {
     Task<IEnumerable<TestCase>> GenerateTestCasesAsync(Requirement requirement);
-    Task<string> GenerateAutomationScriptAsync(TestCase testCase, string framework);
+    Task<string> GenerateAutomationScriptAsync(TestCase testCase, string framework, string? pageStructure = null);
 }
