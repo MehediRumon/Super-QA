@@ -17,72 +17,56 @@ public class OpenAIService : IOpenAIService
 
     public async Task<string> GeneratePlaywrightTestScriptAsync(string frsText, string applicationUrl, string apiKey, string model, string? pageStructure = null)
     {
-        var pageStructureSection = string.IsNullOrWhiteSpace(pageStructure) 
-            ? "" 
-            : $@"
+        var pageStructureSection = string.IsNullOrWhiteSpace(pageStructure)
+            ? string.Empty
+            : $$"""
 
-ACTUAL PAGE ELEMENTS (USE THESE EXACT SELECTORS):
-{pageStructure}
+ACTUAL PAGE ELEMENTS
+Format: [{ type, selector, alternatives[], role, name, id, tag, href, inputType, placeholder }]
+Data:
+{{pageStructure}}
 
-CRITICAL: You MUST use ONLY the selectors from the 'selector' field above. DO NOT invent or guess selectors.
-Example: If you see {{""selector"": ""#loginBtn"", ""type"": ""button""}}, use await page.ClickAsync(""#loginBtn"");
-Example: If you see {{""selector"": ""input[name='username']"", ""type"": ""input""}}, use await page.FillAsync(""input[name='username']"", ""value"");
-DO NOT use generic selectors like 'button', 'input[type=""submit""]', or make up IDs that don't exist in the page structure.";
+CRITICAL SELECTOR POLICY:
+- Prefer role+name when role and name are provided: Page.GetByRole(AriaRole.Button, new() { Name = "Name here" })
+- Else prefer id: Page.Locator("#idValue")
+- Else prefer data-testid/test/qa in selector/alternatives
+- Else prefer input[name=], [placeholder=], [aria-label=]
+- Else use the first provided 'selector' or an 'alternatives' entry
+- DO NOT invent selectors; use only provided values
+- Avoid generic selectors like 'button' or 'input' unless they came from selector list and nothing better exists
+""";
 
-        var prompt = $@"Generate a Playwright test in C# (NUnit) for:
+        var prompt = $$"""
+Generate a Playwright test in C# (NUnit) for:
 
-FRS: {frsText}
-URL: {applicationUrl}{pageStructureSection}
+FRS: {{frsText}}
+URL: {{applicationUrl}}{{pageStructureSection}}
 
-CRITICAL REQUIREMENTS:
-1. Use ONLY these exact namespaces (DO NOT use PlaywrightSharp or any other variation):
-   - using Microsoft.Playwright;
-   - using Microsoft.Playwright.NUnit;
-   - using NUnit.Framework;
-2. Your test class MUST inherit from PageTest (from Microsoft.Playwright.NUnit)
-3. MANDATORY: Use ONLY selectors from the page structure above - copy them exactly from the 'selector' field
-4. Implement test actions (click, fill, navigate) per FRS using the Page property from PageTest
-5. Add assertions for expected behavior using Expect from Microsoft.Playwright
-6. Use async/await properly
-7. NO placeholder comments like 'Modify selector...'
-8. Production-ready, executable code
+REQUIREMENTS:
+1) Use Microsoft.Playwright and Microsoft.Playwright.NUnit with NUnit; class inherits from PageTest
+2) Follow the CRITICAL SELECTOR POLICY strictly
+3) Implement actions and assertions based on FRS
+4) Use async/await properly
+5) Return ONLY executable C# code, no markdown fences
 
-REQUIRED CODE STRUCTURE (follow this template exactly):
-```csharp
-using Microsoft.Playwright;
-using Microsoft.Playwright.NUnit;
-using NUnit.Framework;
-
-namespace PlaywrightTests;
-
-[Parallelizable(ParallelScope.Self)]
-[TestFixture]
-public class Tests : PageTest
-{{
-    [Test]
-    public async Task YourTestName()
-    {{
-        await Page.GotoAsync(""URL_HERE"");
-        // Your test steps using Page property
-        // Use await Page.ClickAsync(""selector"");
-        // Use await Page.FillAsync(""selector"", ""value"");
-        // Use await Expect(Page).ToHaveTitleAsync(...);
-    }}
-}}
-```
-
-Output ONLY C# code following the template above, no explanations or markdown.";
+Example selector usage:
+- Role+name: await Page.GetByRole(AriaRole.Button, new() { Name = "Login" }).ClickAsync();
+- By id: await Page.Locator("#username").FillAsync("test");
+- By data-testid: await Page.Locator("[data-testid=\"email\"]").FillAsync("a@b.com");
+- By placeholder: await Page.Locator("input[placeholder=\"Email\"]").FillAsync("a@b.com");
+- Fallback from provided 'selector': await Page.Locator("CSS_HERE").ClickAsync();
+""";
 
         var requestBody = new
         {
             model = model,
             messages = new[]
             {
-                new { role = "system", content = "You are a Playwright test automation engineer. CRITICAL: Use ONLY Microsoft.Playwright namespace (NOT PlaywrightSharp). Test class MUST inherit from PageTest. Use ONLY selectors explicitly provided in the page structure." },
+                new { role = "system", content = "You are a Playwright test automation engineer. Use Page.GetByRole when role+name exists; otherwise use provided selectors. Never invent selectors." },
                 new { role = "user", content = prompt }
             },
-            temperature = 0.3,
-            max_tokens = 1500
+            temperature = 0.2,
+            max_tokens = 1700
         };
 
         var json = JsonSerializer.Serialize(requestBody);
@@ -91,55 +75,43 @@ Output ONLY C# code following the template above, no explanations or markdown.";
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         var response = await _httpClient.PostAsync(OpenAIEndpoint, content);
-        
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync();
-            
-            // Handle specific error status codes with user-friendly messages
             var errorMessage = response.StatusCode switch
             {
-                System.Net.HttpStatusCode.TooManyRequests => 
-                    "Rate limit exceeded. You've made too many requests to the OpenAI API. Please wait a moment and try again, or check your OpenAI account quota at https://platform.openai.com/usage",
-                System.Net.HttpStatusCode.Unauthorized => 
+                System.Net.HttpStatusCode.TooManyRequests =>
+                    "Rate limit exceeded. You've made too many requests to the OpenAI API. Please wait and try again, or check your quota at https://platform.openai.com/usage",
+                System.Net.HttpStatusCode.Unauthorized =>
                     "Invalid API key. Please check your OpenAI API key and try again. Get your API key from https://platform.openai.com/api-keys",
-                System.Net.HttpStatusCode.PaymentRequired => 
-                    "Payment required. Your OpenAI account has insufficient credits. Please add credits to your account at https://platform.openai.com/account/billing",
-                System.Net.HttpStatusCode.InternalServerError => 
-                    "OpenAI service error. The OpenAI API is experiencing issues. Please try again in a few moments.",
-                System.Net.HttpStatusCode.ServiceUnavailable => 
-                    "OpenAI service unavailable. The OpenAI API is temporarily unavailable. Please try again in a few moments.",
-                _ => 
+                System.Net.HttpStatusCode.PaymentRequired =>
+                    "Payment required. Your OpenAI account has insufficient credits. Please add credits at https://platform.openai.com/account/billing",
+                System.Net.HttpStatusCode.InternalServerError =>
+                    "OpenAI service error. Please try again later.",
+                System.Net.HttpStatusCode.ServiceUnavailable =>
+                    "OpenAI service unavailable. Please try again later.",
+                _ =>
                     $"OpenAI API error ({response.StatusCode}): {errorContent}"
             };
-            
             throw new HttpRequestException(errorMessage);
         }
 
         var responseContent = await response.Content.ReadAsStringAsync();
         var jsonResponse = JsonDocument.Parse(responseContent);
-        
+
         var generatedText = jsonResponse.RootElement
             .GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content")
             .GetString() ?? string.Empty;
 
-        // Clean up the response (remove markdown code blocks if present)
         generatedText = generatedText.Trim();
         if (generatedText.StartsWith("```csharp"))
-        {
             generatedText = generatedText.Substring("```csharp".Length);
-        }
         else if (generatedText.StartsWith("```"))
-        {
             generatedText = generatedText.Substring("```".Length);
-        }
-        
         if (generatedText.EndsWith("```"))
-        {
-            generatedText = generatedText.Substring(0, generatedText.Length - 3);
-        }
+            generatedText = generatedText[..^3];
 
         return generatedText.Trim();
     }

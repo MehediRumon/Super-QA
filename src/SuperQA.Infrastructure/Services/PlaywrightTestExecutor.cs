@@ -38,15 +38,24 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 var createProjectResult = await RunCommandAsync("dotnet", $"new nunit -n {projectName}", tempDir);
                 logs.Add(createProjectResult);
 
-                // Add Playwright package
+                // Add Playwright packages
                 logs.Add("Adding Playwright packages...");
-                var addPackageResult = await RunCommandAsync("dotnet", "add package Microsoft.Playwright.NUnit", projectPath);
-                logs.Add(addPackageResult);
+                logs.Add(await RunCommandAsync("dotnet", "add package Microsoft.Playwright", projectPath));
+                logs.Add(await RunCommandAsync("dotnet", "add package Microsoft.Playwright.NUnit", projectPath));
 
                 // Get headless configuration
                 var headless = _configuration.GetValue<bool>("Playwright:Headless", true);
+
+                // Ensure required usings exist in script
+                var builder = new StringBuilder();
+                if (!testScript.Contains("using Microsoft.Playwright;")) builder.AppendLine("using Microsoft.Playwright;");
+                if (!testScript.Contains("using Microsoft.Playwright.NUnit;")) builder.AppendLine("using Microsoft.Playwright.NUnit;");
+                if (!testScript.Contains("using NUnit.Framework;")) builder.AppendLine("using NUnit.Framework;");
+                if (builder.Length > 0) builder.AppendLine();
+                builder.Append(testScript);
+                testScript = builder.ToString();
                 
-                // Write the test script (no modification needed - headless will be controlled via runsettings)
+                // Write the test script
                 var testFilePath = Path.Combine(projectPath, "GeneratedTest.cs");
                 await File.WriteAllTextAsync(testFilePath, testScript);
                 logs.Add($"Test script written to: {testFilePath} (Headless: {headless})");

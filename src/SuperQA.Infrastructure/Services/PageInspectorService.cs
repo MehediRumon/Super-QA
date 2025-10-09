@@ -21,15 +21,27 @@ public class PageInspectorService : IPageInspectorService
         {
             return await InspectOnceAsync(url);
         }
+        catch (Exception ex) when (IsBrowserNotInstalled(ex))
+        {
+            // Attempt to install browsers, then retry once
+            try
+            {
+                TryInstallChromium();
+                return await InspectOnceAsync(url);
+            }
+            catch (Exception retryEx)
+            {
+                var errorMessage = BuildMissingBrowserMessage(retryEx.Message);
+                return JsonSerializer.Serialize(new[] { new { error = $"Failed to inspect page: {errorMessage}" } });
+            }
+        }
         catch (Exception ex)
         {
-            // Provide helpful error message if browsers aren't installed
             var errorMessage = ex.Message;
             if (IsBrowserNotInstalled(ex))
             {
                 errorMessage = BuildMissingBrowserMessage(errorMessage);
             }
-            Console.WriteLine($"Page inspection failed: {errorMessage}");
             return JsonSerializer.Serialize(new[] { new { error = $"Failed to inspect page: {errorMessage}" } });
         }
     }
@@ -44,59 +56,97 @@ public class PageInspectorService : IPageInspectorService
         });
         var page = await browser.NewPageAsync();
 
-        // Navigate to the URL
         await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
-
-        // Wait a bit for dynamic content
         await page.WaitForTimeoutAsync(2000);
 
-        // Extract page structure
-        var pageStructure = await page.EvaluateAsync<string>(@"() => {
-                const elements = [];
-                function getSelector(el) {
-                    if (el.id) return '#' + el.id;
-                    if (el.name) return el.tagName.toLowerCase() + '[name=""' + el.name + '""]';
-                    if (el.className && typeof el.className === 'string' && el.className.trim()) {
-                        const classes = el.className.trim().split(/\s+/);
-                        if (classes.length > 0) return el.tagName.toLowerCase() + '.' + classes[0];
-                    }
-                    if (el.type) return el.tagName.toLowerCase() + '[type=""' + el.type + '""]';
-                    return el.tagName.toLowerCase();
-                }
-                function getVisibleText(el) {
-                    const text = el.innerText || el.textContent || '';
-                    return text.replace(/\s+/g, ' ').trim().substring(0, 50);
-                }
-                function getPlaceholder(el) { return el.placeholder || ''; }
-                function getAriaLabel(el) { return el.getAttribute('aria-label') || ''; }
-                document.querySelectorAll('input').forEach(el => {
-                    if (el.offsetParent !== null) {
-                        elements.push({ type: 'input', selector: getSelector(el), inputType: el.type || 'text', name: el.name || '', id: el.id || '', placeholder: getPlaceholder(el), ariaLabel: getAriaLabel(el), value: el.value || '' });
-                    }
-                });
-                document.querySelectorAll('button, input[type=""submit""], input[type=""button""]').forEach(el => {
-                    if (el.offsetParent !== null) {
-                        elements.push({ type: 'button', selector: getSelector(el), text: getVisibleText(el), id: el.id || '', name: el.name || '', ariaLabel: getAriaLabel(el) });
-                    }
-                });
-                document.querySelectorAll('a').forEach(el => {
-                    if (el.offsetParent !== null && el.href) {
-                        elements.push({ type: 'link', selector: getSelector(el), text: getVisibleText(el), href: el.href, id: el.id || '' });
-                    }
-                });
-                document.querySelectorAll('textarea').forEach(el => {
-                    if (el.offsetParent !== null) {
-                        elements.push({ type: 'textarea', selector: getSelector(el), name: el.name || '', id: el.id || '', placeholder: getPlaceholder(el) });
-                    }
-                });
-                document.querySelectorAll('select').forEach(el => {
-                    if (el.offsetParent !== null) {
-                        elements.push({ type: 'select', selector: getSelector(el), name: el.name || '', id: el.id || '' });
-                    }
-                });
-                return JSON.stringify(elements, null, 2);
-            }");
-        await browser.CloseAsync();
+        var js = """
+() => {
+    const elements = [];
+
+    const preferSelectors = (el) => {
+        const sels = [];
+        const val = (name) => el.getAttribute(name);
+        const tag = el.tagName.toLowerCase();
+        const esc = (s) => s && s.replace(/(["\\\[\]\(\)#\.\+\*\^\$\?\|\{\}])/g, '\\$1');
+
+        const dtid = val('data-testid') || val('data-test') || val('data-qa');
+        if (dtid) sels.push(`[data-testid="${esc(dtid)}"]`, `[data-test="${esc(dtid)}"]`, `[data-qa="${esc(dtid)}"]`);
+
+        if (el.id) sels.push(`#${esc(el.id)}`);
+
+        if ((tag === 'input' || tag === 'textarea' || tag === 'select') && el.name) {
+            sels.push(`${tag}[name="${esc(el.name)}"]`);
+        }
+
+        if ((tag === 'input' || tag === 'textarea') && el.placeholder) {
+            sels.push(`${tag}[placeholder="${esc(el.placeholder)}"]`);
+        }
+
+        const aria = val('aria-label');
+        if (aria) sels.push(`[aria-label="${esc(aria)}"]`);
+
+        // For links/buttons, include a text selector
+        const visibleText = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+        if ((tag === 'a' || tag === 'button') && visibleText) {
+            sels.push(`text=${visibleText}`);
+        }
+
+        // Fallback to tag if nothing else
+        if (sels.length === 0) sels.push(tag);
+        // Deduplicate, keep order
+        return [...new Set(sels)];
+    };
+
+    const getRole = (el) => {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'button' || (tag === 'input' && (el.type === 'submit' || el.type === 'button' || el.type === 'reset'))) return 'button';
+        if (tag === 'a' && el.href) return 'link';
+        if (tag === 'input' && (!el.type || ['text','email','password','search','tel','url','number'].includes(el.type))) return 'textbox';
+        if (tag === 'select') return 'combobox';
+        if (tag === 'textarea') return 'textbox';
+        return '';
+    };
+
+    const getName = (el) => {
+        const preferred = (s) => s && s.replace(/\s+/g, ' ').trim();
+        return preferred(el.getAttribute('aria-label'))
+            || preferred(el.innerText || el.textContent)
+            || preferred(el.getAttribute('title'))
+            || preferred(el.getAttribute('alt'))
+            || preferred(el.getAttribute('placeholder'))
+            || '';
+    };
+
+    const pushIfVisible = (el, type) => {
+        if (el.offsetParent === null) return; // visible check
+        const selectors = preferSelectors(el);
+        const role = getRole(el);
+        const name = getName(el);
+        elements.push({
+            type,
+            selector: selectors[0],
+            alternatives: selectors.slice(1),
+            role,
+            name,
+            id: el.id || '',
+            tag: el.tagName.toLowerCase(),
+            href: el.href || undefined,
+            inputType: el.type || undefined,
+            placeholder: el.placeholder || undefined
+        });
+    };
+
+    document.querySelectorAll('input').forEach(el => pushIfVisible(el, 'input'));
+    document.querySelectorAll('button, input[type="submit"], input[type="button"]').forEach(el => pushIfVisible(el, 'button'));
+    document.querySelectorAll('a').forEach(el => pushIfVisible(el, 'link'));
+    document.querySelectorAll('textarea').forEach(el => pushIfVisible(el, 'textarea'));
+    document.querySelectorAll('select').forEach(el => pushIfVisible(el, 'select'));
+
+    return JSON.stringify(elements, null, 2);
+}
+""";
+
+        var pageStructure = await page.EvaluateAsync<string>(js);
         return pageStructure ?? "[]";
     }
 
@@ -108,21 +158,19 @@ public class PageInspectorService : IPageInspectorService
             || (msg.Contains("Failed to launch", StringComparison.OrdinalIgnoreCase) && msg.Contains("download", StringComparison.OrdinalIgnoreCase));
     }
 
+    private static void TryInstallChromium()
+    {
+        try
+        {
+            _ = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+        }
+        catch
+        {
+        }
+    }
+
     private static string BuildMissingBrowserMessage(string baseMsg)
     {
-        return @"Playwright browsers are not installed. 
-
-REQUIRED STEPS TO FIX:
-1. Install the Playwright CLI globally:
-   dotnet tool install --global Microsoft.Playwright.CLI
-
-2. Install Chromium browser:
-   playwright install chromium
-
-3. Restart the application
-
-For detailed instructions, see: docs/TROUBLESHOOTING_PLAYWRIGHT.md
-
-Original error: " + baseMsg;
+        return "Playwright browsers are not installed. Please install by running: 'dotnet tool install --global Microsoft.Playwright.CLI' and 'playwright install chromium'. Original: " + baseMsg;
     }
 }
