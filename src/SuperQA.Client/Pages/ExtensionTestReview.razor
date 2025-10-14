@@ -47,9 +47,8 @@
                         <label class="form-label fw-bold">Recorded Gherkin Steps with Locators</label>
                         <textarea class="form-control gherkin-display" 
                                   @bind="gherkinStepsText" 
-                                  rows="12" 
-                                  readonly></textarea>
-                        <small class="form-text text-muted">@stepsCount step(s) recorded from browser extension</small>
+                                  rows="12"></textarea>
+                        <small class="form-text text-muted">@stepsCount step(s) recorded from browser extension - You can edit the steps before generating the test script</small>
                     </div>
 
                     <div class="d-grid gap-2">
@@ -309,7 +308,7 @@
                     applicationUrl = response.ApplicationUrl ?? string.Empty;
                     steps = response.Steps ?? new();
                     stepsCount = steps.Count;
-                    gherkinStepsText = string.Join("\n", steps.Select(s => s.Description));
+                    gherkinStepsText = FormatStepsForDisplay(steps);
                 }
                 else
                 {
@@ -326,6 +325,30 @@
             Console.WriteLine($"Error loading extension data: {ex.Message}");
             errorMessage = "Failed to load extension data. The link may have expired or the data is no longer available.";
         }
+    }
+
+    private string FormatStepsForDisplay(List<BrowserExtensionStep> steps)
+    {
+        var formatted = "Browser Extension Recorded Steps:\n\n";
+        for (int i = 0; i < steps.Count; i++)
+        {
+            var step = steps[i];
+            formatted += $"{i + 1}. {step.Description}\n";
+            if (!string.IsNullOrWhiteSpace(step.Action))
+            {
+                formatted += $"   Action: {step.Action}\n";
+            }
+            if (!string.IsNullOrWhiteSpace(step.Locator))
+            {
+                formatted += $"   Locator: {step.Locator}\n";
+            }
+            if (!string.IsNullOrWhiteSpace(step.Value))
+            {
+                formatted += $"   Value: {step.Value}\n";
+            }
+            formatted += "\n";
+        }
+        return formatted;
     }
 
     private async Task GenerateTestScript()
@@ -347,7 +370,7 @@
             return;
         }
 
-        if (steps == null || steps.Count == 0)
+        if (string.IsNullOrWhiteSpace(gherkinStepsText))
         {
             errorMessage = "No Gherkin steps found. Please record steps from the browser extension first.";
             return;
@@ -357,14 +380,26 @@
 
         try
         {
-            var request = new GenerateFromExtensionRequest
+            // Get settings for API key
+            var settings = await SettingsService.GetSettingsAsync();
+            if (settings == null || string.IsNullOrWhiteSpace(settings.OpenAIApiKey))
             {
-                TestName = testName,
+                errorMessage = "OpenAI API key is required. Please configure it in Settings.";
+                return;
+            }
+
+            // Prepare FRS text with test name
+            var frsText = $"Test Name: {testName}\n\n{gherkinStepsText}";
+
+            var request = new PlaywrightTestGenerationRequest
+            {
+                FrsText = frsText,
                 ApplicationUrl = applicationUrl,
-                Steps = steps
+                OpenAIApiKey = settings.OpenAIApiKey,
+                Model = settings.SelectedModel
             };
 
-            var response = await PlaywrightService.GenerateFromExtensionAsync(request);
+            var response = await PlaywrightService.GenerateTestScriptAsync(request);
 
             if (response.Success)
             {
