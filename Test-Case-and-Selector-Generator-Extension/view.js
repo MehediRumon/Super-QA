@@ -222,7 +222,7 @@ if (sendToSuperQABtn) {
             
             try {
                 // Send to SuperQA API
-                const response = await fetch('http://localhost:7001/api/playwright/generate-from-extension', {
+                const response = await fetch('https://localhost:7001/api/playwright/generate-from-extension', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -237,7 +237,7 @@ if (sendToSuperQABtn) {
                     
                     // Open SuperQA in a new tab
                     setTimeout(() => {
-                        window.open('http://localhost:7001', '_blank');
+                        window.open('https://localhost:7001', '_blank');
                     }, 500);
                 } else {
                     const errorData = await response.json();

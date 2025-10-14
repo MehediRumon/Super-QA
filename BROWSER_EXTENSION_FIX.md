@@ -101,7 +101,7 @@ Added new functionality to ProjectDetails page:
 
 ### CORS Verification
 ```bash
-curl -v -X POST http://localhost:7001/api/playwright/generate-from-extension \
+curl -v -X POST https://localhost:7001/api/playwright/generate-from-extension \
   -H "Content-Type: application/json" \
   -H "Origin: chrome-extension://test-extension-id" \
   -d '{"applicationUrl":"http://example.com","testName":"Test","steps":[...]}'
@@ -111,7 +111,7 @@ You should see `Access-Control-Allow-Origin: *` in the response headers.
 
 ### Database Persistence Verification
 After sending a test from the extension:
-1. Navigate to SuperQA at `http://localhost:7001` (or `https://localhost:5001`)
+1. Navigate to SuperQA at `https://localhost:7001` (or `https://localhost:5001`)
 2. Look for the "Generated Tests" project in the projects list
 3. Click on the project to see the test case
 4. The test should have the automation script ready to run

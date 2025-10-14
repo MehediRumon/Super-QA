@@ -6,7 +6,7 @@ This guide explains how to use the Browser Extension to send test cases to Super
 
 ## Prerequisites
 
-1. **SuperQA API Running**: The API must be running on `http://localhost:7001` or `https://localhost:7001`
+1. **SuperQA API Running**: The API must be running on `https://localhost:7001`
    ```bash
    cd src/SuperQA.Api
    dotnet run
