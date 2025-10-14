@@ -15,6 +15,7 @@ public class SuperQADbContext : DbContext
     public DbSet<TestExecution> TestExecutions => Set<TestExecution>();
     public DbSet<DefectPrediction> DefectPredictions => Set<DefectPrediction>();
     public DbSet<AIPromptLog> AIPromptLogs => Set<AIPromptLog>();
+    public DbSet<UserSettings> UserSettings => Set<UserSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,6 +88,13 @@ public class SuperQADbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.PromptType).HasMaxLength(100);
             entity.Property(e => e.Model).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<UserSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OpenAIApiKey).HasMaxLength(500);
+            entity.Property(e => e.SelectedModel).HasMaxLength(100);
         });
     }
 }

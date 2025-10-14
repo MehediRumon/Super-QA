@@ -75,4 +75,35 @@ public class PlaywrightTestService : IPlaywrightTestService
             };
         }
     }
+
+    public async Task<PlaywrightTestGenerationResponse> GenerateFromExtensionAsync(GenerateFromExtensionRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/api/playwright/generate-from-extension", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<PlaywrightTestGenerationResponse>()
+                    ?? new PlaywrightTestGenerationResponse { Success = false, ErrorMessage = "Failed to parse response" };
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                return new PlaywrightTestGenerationResponse 
+                { 
+                    Success = false, 
+                    ErrorMessage = $"API error: {response.StatusCode} - {errorContent}" 
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            return new PlaywrightTestGenerationResponse 
+            { 
+                Success = false, 
+                ErrorMessage = $"Error: {ex.Message}" 
+            };
+        }
+    }
 }

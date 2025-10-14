@@ -19,5 +19,6 @@ builder.Services.AddScoped<ITestCaseService, TestCaseService>();
 builder.Services.AddScoped<IRequirementService, RequirementService>();
 builder.Services.AddScoped<SuperQA.Client.Services.ITestExecutionService, SuperQA.Client.Services.TestExecutionService>();
 builder.Services.AddScoped<IPlaywrightTestService, PlaywrightTestService>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
 
 await builder.Build().RunAsync();
