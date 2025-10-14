@@ -152,9 +152,6 @@ if (sendToSuperQABtn) {
             // Parse Gherkin steps to extract action, locator, and description
             const steps = gherkinSteps.map(stepText => {
                 // Parse step format: "Click on Login Button (xpath=//button[@id='login'])"
-            // Parse Gherkin steps to extract action, locator, and description
-            const steps = gherkinSteps.map(stepText => {
-                // Parse step format: "Click on Login Button (xpath=//button[@id='login'])"
                 const match = stepText.match(/^(.+?)\s*\((.+?)\)\s*$/);
                 if (match) {
                     const [, description, locator] = match;
