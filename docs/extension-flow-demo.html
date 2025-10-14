@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension Flow Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        .info {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Extension Test Review Flow Demo</h1>
+        
+        <div class="step">
+            <h3>Step 1: Store Extension Data</h3>
+            <p>Simulate browser extension storing Gherkin steps data on the server.</p>
+            <button onclick="storeData()">Store Test Data</button>
+            <div id="storeResult"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Open Review Page</h3>
+            <p>Open the SuperQA review page with the data ID.</p>
+            <button id="openReviewBtn" onclick="openReview()" disabled>Open Review Page</button>
+            <p id="reviewInfo"></p>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Retrieve Data</h3>
+            <p>Simulate the review page fetching data from the server.</p>
+            <button id="retrieveBtn" onclick="retrieveData()" disabled>Retrieve Data</button>
+            <div id="retrieveResult"></div>
+        </div>
+
+        <div class="step">
+            <h3>Expected Flow</h3>
+            <ol>
+                <li>Extension records user interactions as Gherkin steps with locators</li>
+                <li>User clicks "Send to SuperQA" in extension</li>
+                <li>Extension stores data on server (10-minute cache)</li>
+                <li>Extension opens review page with data ID</li>
+                <li>Review page loads and displays:
+                    <ul>
+                        <li>Test Name (editable)</li>
+                        <li>Application URL (editable)</li>
+                        <li>Recorded Gherkin Steps (read-only)</li>
+                    </ul>
+                </li>
+                <li>User reviews and clicks "Generate Test Script"</li>
+                <li>AI generates Playwright test script</li>
+                <li>User can execute the generated test</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let currentDataId = null;
+
+        const testData = {
+            testName: "User Login Test",
+            applicationUrl: "https://example.com/login",
+            steps: [
+                {
+                    action: "fill",
+                    locator: "xpath=//input[@id='username']",
+                    value: "testuser",
+                    description: "Enter Username \"testuser\" (xpath=//input[@id='username'])"
+                },
+                {
+                    action: "fill",
+                    locator: "xpath=//input[@id='password']",
+                    value: "testpass",
+                    description: "Enter Password \"testpass\" (xpath=//input[@id='password'])"
+                },
+                {
+                    action: "click",
+                    locator: "xpath=//button[@id='login-btn']",
+                    value: "",
+                    description: "Click on Login Button (xpath=//button[@id='login-btn'])"
+                }
+            ]
+        };
+
+        async function storeData() {
+            const resultDiv = document.getElementById('storeResult');
+            resultDiv.innerHTML = '<p>Storing data...</p>';
+
+            try {
+                const response = await fetch('https://localhost:7001/api/playwright/store-extension-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    currentDataId = result.dataId;
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Success!</p>
+                        <div class="code">Data ID: ${result.dataId}</div>
+                    `;
+                    document.getElementById('openReviewBtn').disabled = false;
+                    document.getElementById('retrieveBtn').disabled = false;
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">❌ Failed to store data</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function openReview() {
+            if (currentDataId) {
+                const url = `http://localhost:5000/extension-test-review?dataId=${currentDataId}`;
+                document.getElementById('reviewInfo').innerHTML = `
+                    <p class="info">Opening: <a href="${url}" target="_blank">${url}</a></p>
+                    <p>Note: Due to HTTPS certificate issues in development, you may need to accept the certificate first.</p>
+                `;
+                window.open(url, '_blank');
+            }
+        }
+
+        async function retrieveData() {
+            if (!currentDataId) {
+                alert('Please store data first!');
+                return;
+            }
+
+            const resultDiv = document.getElementById('retrieveResult');
+            resultDiv.innerHTML = '<p>Retrieving data...</p>';
+
+            try {
+                const response = await fetch(`https://localhost:7001/api/playwright/get-extension-data/${currentDataId}`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Retrieved successfully!</p>
+                        <div class="code">${JSON.stringify(data, null, 2)}</div>
+                        <p class="info">ℹ️ Data has been removed from cache (one-time use)</p>
+                    `;
+                    document.getElementById('retrieveBtn').disabled = true;
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">❌ Data not found or expired</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
