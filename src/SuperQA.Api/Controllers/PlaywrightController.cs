@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SuperQA.Core.Entities;
 using SuperQA.Core.Interfaces;
 using SuperQA.Infrastructure.Data;
@@ -16,19 +17,22 @@ public class PlaywrightController : ControllerBase
     private readonly IPageInspectorService _pageInspectorService;
     private readonly IUserSettingsService _settingsService;
     private readonly SuperQADbContext _context;
+    private readonly IMemoryCache _cache;
 
     public PlaywrightController(
         IOpenAIService openAIService, 
         IPlaywrightTestExecutor playwrightTestExecutor, 
         IPageInspectorService pageInspectorService, 
         IUserSettingsService settingsService,
-        SuperQADbContext context)
+        SuperQADbContext context,
+        IMemoryCache cache)
     {
         _openAIService = openAIService;
         _playwrightTestExecutor = playwrightTestExecutor;
         _pageInspectorService = pageInspectorService;
         _settingsService = settingsService;
         _context = context;
+        _cache = cache;
     }
 
     [HttpPost("generate")]
@@ -223,6 +227,51 @@ public class PlaywrightController : ControllerBase
                 Success = false,
                 ErrorMessage = $"Error generating test script: {ex.Message}"
             });
+        }
+    }
+
+    [HttpPost("store-extension-data")]
+    public ActionResult<object> StoreExtensionData([FromBody] GenerateFromExtensionRequest request)
+    {
+        try
+        {
+            // Store the data in memory cache with a unique ID
+            var dataId = Guid.NewGuid().ToString();
+            
+            // Store for 10 minutes
+            var cacheEntryOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
+            
+            _cache.Set($"extension-data-{dataId}", request, cacheEntryOptions);
+            
+            return Ok(new { dataId = dataId, message = "Data stored successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error storing data: {ex.Message}" });
+        }
+    }
+
+    [HttpGet("get-extension-data/{dataId}")]
+    public ActionResult<GenerateFromExtensionRequest> GetExtensionData(string dataId)
+    {
+        try
+        {
+            if (_cache.TryGetValue($"extension-data-{dataId}", out GenerateFromExtensionRequest? data))
+            {
+                if (data != null)
+                {
+                    // Remove from cache after retrieving (one-time use)
+                    _cache.Remove($"extension-data-{dataId}");
+                    return Ok(data);
+                }
+            }
+            
+            return NotFound(new { error = "Data not found or expired" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error retrieving data: {ex.Message}" });
         }
     }
 
