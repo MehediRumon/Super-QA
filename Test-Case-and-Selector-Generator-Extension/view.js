@@ -151,10 +151,13 @@ if (sendToSuperQABtn) {
             
             // Parse Gherkin steps to extract action, locator, and description
             const steps = gherkinSteps.map(stepText => {
-                // Parse step format: "When Click on Login Button [xpath=//button[@id='login']]"
-                const match = stepText.match(/^(Given|When|Then|And)\s+(.+?)\s*(?:\[(.+?)\])?$/);
+                // Parse step format: "Click on Login Button (xpath=//button[@id='login'])"
+            // Parse Gherkin steps to extract action, locator, and description
+            const steps = gherkinSteps.map(stepText => {
+                // Parse step format: "Click on Login Button (xpath=//button[@id='login'])"
+                const match = stepText.match(/^(.+?)\s*\((.+?)\)\s*$/);
                 if (match) {
-                    const [, keyword, description, locator] = match;
+                    const [, description, locator] = match;
                     
                     // Determine action type
                     let action = 'click';
@@ -217,12 +220,12 @@ if (sendToSuperQABtn) {
             
             // Update UI
             sendToSuperQABtn.disabled = true;
-            sendStatus.textContent = '⏳ Sending to SuperQA...';
+            sendStatus.textContent = '⏳ Opening SuperQA...';
             sendStatus.style.color = 'white';
             
             try {
-                // Send to SuperQA API
-                const response = await fetch('https://localhost:7001/api/playwright/generate-from-extension', {
+                // Store data on the server and get a data ID
+                const response = await fetch('https://localhost:7001/api/playwright/store-extension-data', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -231,21 +234,28 @@ if (sendToSuperQABtn) {
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    sendStatus.textContent = '✅ Successfully sent to SuperQA!';
+                    const result = await response.json();
+                    const dataId = result.dataId;
+                    
+                    sendStatus.textContent = '✅ Opening SuperQA...';
                     sendStatus.style.color = '#90EE90';
                     
-                    // Open SuperQA in a new tab
+                    // Open SuperQA with the data ID in the URL
+                    const superQAUrl = `https://localhost:7001/extension-test-review?dataId=${dataId}`;
+                    window.open(superQAUrl, '_blank');
+                    
+                    // Reset button after a delay
                     setTimeout(() => {
-                        window.open('https://localhost:7001', '_blank');
-                    }, 500);
+                        sendToSuperQABtn.disabled = false;
+                        sendStatus.textContent = '✅ Opened SuperQA! Review and generate your test.';
+                    }, 1000);
                 } else {
-                    const errorData = await response.json();
-                    sendStatus.textContent = `❌ Error: ${errorData.errorMessage || 'Failed to send'}`;
+                    sendStatus.textContent = '❌ Failed to store data. Please try again.';
                     sendStatus.style.color = '#ffcccb';
+                    sendToSuperQABtn.disabled = false;
                 }
             } catch (error) {
-                console.error('Error sending to SuperQA:', error);
+                console.error('Error opening SuperQA:', error);
                 sendStatus.textContent = `❌ Error: ${error.message}`;
                 sendStatus.style.color = '#ffcccb';
             } finally {
