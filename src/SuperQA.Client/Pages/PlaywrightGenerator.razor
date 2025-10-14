@@ -3,50 +3,93 @@
 @using SuperQA.Client.Services
 @using Microsoft.JSInterop
 @inject IPlaywrightTestService PlaywrightService
+@inject ISettingsService SettingsService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Playwright Test Generator</PageTitle>
 
-<h1>🎭 AI-Powered Playwright Test Generator</h1>
-<p class="text-muted">Generate executable Playwright test scripts in C# using OpenAI</p>
+<div class="container-fluid py-4">
+    <div class="page-header mb-4">
+        <h1 class="display-5 fw-bold gradient-text">
+            <i class="bi bi-robot me-2"></i>AI-Powered Playwright Test Generator
+        </h1>
+        <p class="lead text-muted">Generate executable Playwright test scripts in C# using OpenAI</p>
+    </div>
 
 <div class="row mt-4">
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5>Configuration & Requirements</h5>
+        <div class="card modern-card shadow-lg border-0">
+            <div class="card-header bg-gradient-primary text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>Configuration & Requirements</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
+                @if (settingsLoaded && hasStoredSettings)
+                {
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>Settings Loaded!</strong> Using your saved API key and preferences. 
+                        <a href="/settings" class="alert-link">Update Settings</a>
+                        <button type="button" class="btn-close" @onclick="() => hasStoredSettings = false"></button>
+                    </div>
+                }
+
                 <div class="mb-3">
-                    <label class="form-label">OpenAI API Key <span class="text-danger">*</span></label>
-                    <input type="password" class="form-control" @bind="apiKey" placeholder="sk-..." />
-                    <small class="form-text text-muted">Your OpenAI API key (not stored, used only for this request)</small>
+                    <label class="form-label fw-bold">OpenAI API Key @if (!hasStoredSettings) { <span class="text-danger">*</span> }</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">
+                            <i class="bi bi-key-fill"></i>
+                        </span>
+                        <input type="password" 
+                               class="form-control" 
+                               @bind="apiKey" 
+                               placeholder="@(hasStoredSettings ? "Using saved API key" : "sk-...")" 
+                               disabled="@hasStoredSettings" />
+                    </div>
+                    <small class="form-text text-muted">
+                        @if (hasStoredSettings)
+                        {
+                            <span>Using API key from <a href="/settings">Settings</a></span>
+                        }
+                        else
+                        {
+                            <span>Your OpenAI API key (not stored, used only for this request). <a href="/settings">Save in Settings</a></span>
+                        }
+                    </small>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">AI Model</label>
-                    <select class="form-control" @bind="selectedModel">
+                    <label class="form-label fw-bold">AI Model</label>
+                    <select class="form-select" @bind="selectedModel" disabled="@hasStoredSettings">
                         <option value="gpt-4o-mini">GPT-4o Mini (Recommended)</option>
                         <option value="gpt-4o">GPT-4o</option>
                         <option value="gpt-4-turbo">GPT-4 Turbo</option>
                         <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                     </select>
+                    @if (hasStoredSettings)
+                    {
+                        <small class="form-text text-muted">Using model from <a href="/settings">Settings</a></small>
+                    }
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Application URL <span class="text-danger">*</span></label>
-                    <input type="url" class="form-control" @bind="applicationUrl" placeholder="https://example.com" />
+                    <label class="form-label fw-bold">Application URL <span class="text-danger">*</span></label>
+                    <input type="url" 
+                           class="form-control" 
+                           @bind="applicationUrl" 
+                           placeholder="https://example.com" />
                     <small class="form-text text-muted">URL of the application under test</small>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Functional Requirement Specification (FRS) <span class="text-danger">*</span></label>
-                    <textarea class="form-control" @bind="frsText" rows="8" 
+                    <label class="form-label fw-bold">Functional Requirement Specification (FRS) <span class="text-danger">*</span></label>
+                    <textarea class="form-control" 
+                              @bind="frsText" 
+                              rows="8" 
                               placeholder="Enter the functional requirements. Example:&#10;&#10;User Login Feature:&#10;1. User should be able to navigate to the login page&#10;2. User should see username and password fields&#10;3. User should be able to enter credentials&#10;4. Upon clicking Login, user should be authenticated&#10;5. Successful login should redirect to dashboard&#10;6. Failed login should display error message"></textarea>
                 </div>
 
                 <div class="d-grid gap-2">
-                    <button class="btn btn-primary btn-lg" @onclick="GenerateTestScript" disabled="@isGenerating">
+                    <button class="btn btn-primary btn-lg modern-btn" @onclick="GenerateTestScript" disabled="@isGenerating">
                         @if (isGenerating)
                         {
                             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -54,15 +97,18 @@
                         }
                         else
                         {
-                            <span>🤖 Generate Test Script</span>
+                            <i class="bi bi-magic me-2"></i>
+                            <span>Generate Test Script</span>
                         }
                     </button>
                 </div>
 
                 @if (!string.IsNullOrEmpty(errorMessage))
                 {
-                    <div class="alert alert-danger mt-3" role="alert">
+                    <div class="alert alert-danger mt-3 alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
                         <strong>Error:</strong> @errorMessage
+                        <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
                     </div>
                 }
 
@@ -71,7 +117,7 @@
                     <div class="alert alert-warning mt-3" role="alert">
                         @foreach (var warning in warnings)
                         {
-                            <div>@warning</div>
+                            <div><i class="bi bi-exclamation-triangle me-2"></i>@warning</div>
                         }
                     </div>
                 }
@@ -80,27 +126,30 @@
     </div>
 
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5>Generated Test Script</h5>
+        <div class="card modern-card shadow-lg border-0">
+            <div class="card-header bg-gradient-success text-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-code-slash me-2"></i>Generated Test Script</h5>
                 @if (!string.IsNullOrEmpty(generatedScript))
                 {
-                    <button class="btn btn-sm btn-outline-primary" @onclick="CopyToClipboard">
-                        📋 Copy
+                    <button class="btn btn-sm btn-light" @onclick="CopyToClipboard">
+                        <i class="bi bi-clipboard me-1"></i> Copy
                     </button>
                 }
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 @if (string.IsNullOrEmpty(generatedScript))
                 {
-                    <p class="text-muted">Generated test script will appear here...</p>
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-code-square" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p class="mt-3">Generated test script will appear here...</p>
+                    </div>
                 }
                 else
                 {
-                    <pre style="max-height: 400px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px;"><code>@generatedScript</code></pre>
+                    <pre class="code-block"><code>@generatedScript</code></pre>
                     
                     <div class="d-grid gap-2 mt-3">
-                        <button class="btn btn-success" @onclick="ExecuteTestScript" disabled="@isExecuting">
+                        <button class="btn btn-success btn-lg modern-btn" @onclick="ExecuteTestScript" disabled="@isExecuting">
                             @if (isExecuting)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -108,7 +157,8 @@
                             }
                             else
                             {
-                                <span>▶️ Execute Test</span>
+                                <i class="bi bi-play-fill me-2"></i>
+                                <span>Execute Test</span>
                             }
                         </button>
                     </div>
@@ -118,53 +168,128 @@
 
         @if (executionResult != null)
         {
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5>Test Execution Results</h5>
+            <div class="card modern-card shadow-lg border-0 mt-4">
+                <div class="card-header @(executionResult.Status == "Pass" ? "bg-success" : "bg-danger") text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Test Execution Results</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <div class="mb-3">
                         <strong>Status:</strong>
                         @if (executionResult.Status == "Pass")
                         {
-                            <span class="badge bg-success">✓ PASSED</span>
+                            <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill me-1"></i>PASSED</span>
                         }
                         else if (executionResult.Status == "Fail")
                         {
-                            <span class="badge bg-danger">✗ FAILED</span>
+                            <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill me-1"></i>FAILED</span>
                         }
                         else
                         {
-                            <span class="badge bg-warning">⚠ @executionResult.Status</span>
+                            <span class="badge bg-warning fs-6"><i class="bi bi-exclamation-triangle-fill me-1"></i>@executionResult.Status</span>
                         }
                     </div>
 
                     @if (!string.IsNullOrEmpty(executionResult.ErrorMessage))
                     {
                         <div class="alert alert-danger">
-                            <strong>Error:</strong> @executionResult.ErrorMessage
+                            <strong><i class="bi bi-exclamation-triangle me-2"></i>Error:</strong> @executionResult.ErrorMessage
                         </div>
                     }
 
                     @if (executionResult.Logs != null && executionResult.Logs.Any())
                     {
                         <div>
-                            <strong>Execution Logs:</strong>
-                            <pre style="max-height: 300px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">@string.Join("\n", executionResult.Logs)</pre>
+                            <strong><i class="bi bi-terminal me-2"></i>Execution Logs:</strong>
+                            <pre class="code-block mt-2 small">@string.Join("\n", executionResult.Logs)</pre>
                         </div>
                     }
 
                     @if (!string.IsNullOrEmpty(executionResult.Output))
                     {
                         <div class="mt-3">
-                            <strong>Test Output:</strong>
-                            <pre style="max-height: 200px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">@executionResult.Output</pre>
+                            <strong><i class="bi bi-file-text me-2"></i>Test Output:</strong>
+                            <pre class="code-block mt-2 small">@executionResult.Output</pre>
                         </div>
                     }
                 </div>
             </div>
         }
     </div>
+</div>
+
+<style>
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .modern-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .modern-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .modern-btn {
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .modern-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary.modern-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .btn-success.modern-btn {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .code-block {
+        max-height: 400px;
+        overflow-y: auto;
+        background-color: #2d2d2d;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .page-header {
+        padding: 20px 0;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .alert {
+        border-radius: 10px;
+    }
+</style>
 </div>
 
 @code {
@@ -178,6 +303,33 @@
     private bool isGenerating = false;
     private bool isExecuting = false;
     private PlaywrightTestExecutionResponse? executionResult = null;
+    private bool settingsLoaded = false;
+    private bool hasStoredSettings = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.OpenAIApiKey))
+            {
+                apiKey = settings.OpenAIApiKey;
+                selectedModel = settings.SelectedModel;
+                hasStoredSettings = true;
+            }
+            settingsLoaded = true;
+        }
+        catch
+        {
+            settingsLoaded = true;
+            hasStoredSettings = false;
+        }
+    }
 
     private async Task GenerateTestScript()
     {
@@ -186,9 +338,9 @@
         generatedScript = string.Empty;
         executionResult = null;
 
-        if (string.IsNullOrWhiteSpace(apiKey))
+        if (!hasStoredSettings && string.IsNullOrWhiteSpace(apiKey))
         {
-            errorMessage = "Please enter your OpenAI API key";
+            errorMessage = "Please enter your OpenAI API key or configure it in Settings";
             return;
         }
 
@@ -212,7 +364,7 @@
             {
                 FrsText = frsText,
                 ApplicationUrl = applicationUrl,
-                OpenAIApiKey = apiKey,
+                OpenAIApiKey = hasStoredSettings ? string.Empty : apiKey,
                 Model = selectedModel
             };
 
@@ -266,8 +418,6 @@
 
     private async Task CopyToClipboard()
     {
-        // Note: Clipboard API requires HTTPS in production
-        // This is a simplified version
         try
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedScript);
