@@ -2,59 +2,227 @@
 
 <PageTitle>Super-QA Dashboard</PageTitle>
 
-<h1>AI-Powered Super-QA Testing System</h1>
+<div class="container-fluid py-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold gradient-text">
+            <i class="bi bi-robot me-2"></i>AI-Powered Playwright Test Automation
+        </h1>
+        <p class="lead text-muted mt-3">
+            Generate, execute, and manage Playwright test scripts with AI assistance
+        </p>
+    </div>
 
-<p>Welcome to Super-QA, the intelligent test automation and quality assurance platform.</p>
+    <div class="row g-4 justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card modern-card shadow-lg border-0 h-100">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-robot me-2"></i>Playwright Test Generator
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <p class="card-text mb-4">
+                        Generate executable Playwright C# test scripts using AI from functional requirements or browser extension recordings.
+                    </p>
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            AI-powered test generation
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Browser extension integration
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Automatic locator detection
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Execute tests directly
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Detailed test reports
+                        </li>
+                    </ul>
+                    <a href="/playwright-generator" class="btn btn-primary btn-lg w-100 modern-btn">
+                        <i class="bi bi-play-circle me-2"></i>Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
 
-<div class="row mt-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">🎭 Playwright Test Generator</h5>
-                <p class="card-text">Generate executable Playwright C# test scripts using OpenAI from FRS</p>
-                <a href="/playwright-generator" class="btn btn-primary">Generate Tests</a>
+        <div class="col-md-6 col-lg-5">
+            <div class="card modern-card shadow-lg border-0 h-100">
+                <div class="card-header bg-gradient-secondary text-white py-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-gear-fill me-2"></i>Settings
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <p class="card-text mb-4">
+                        Configure your SuperQA preferences including API keys, AI models, and browser settings.
+                    </p>
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-2">
+                            <i class="bi bi-shield-check text-primary me-2"></i>
+                            Secure API key storage
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-shield-check text-primary me-2"></i>
+                            AI model selection
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-shield-check text-primary me-2"></i>
+                            Browser mode configuration
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-shield-check text-primary me-2"></i>
+                            Auto-load preferences
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-shield-check text-primary me-2"></i>
+                            Save time on every test
+                        </li>
+                    </ul>
+                    <a href="/settings" class="btn btn-secondary btn-lg w-100 modern-btn">
+                        <i class="bi bi-sliders me-2"></i>Configure Now
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">🤖 AI Test Generator</h5>
-                <p class="card-text">Generate comprehensive test cases from requirements using AI/MCP</p>
-                <a href="/projects" class="btn btn-primary">Get Started</a>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card modern-card shadow border-0">
+                <div class="card-body p-4">
+                    <h3 class="card-title mb-4">
+                        <i class="bi bi-info-circle me-2"></i>How It Works
+                    </h3>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="feature-icon bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-1-circle-fill fs-3"></i>
+                                </div>
+                                <h5>Configure Settings</h5>
+                                <p class="text-muted small">Set your OpenAI API key and preferences</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="feature-icon bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-2-circle-fill fs-3"></i>
+                                </div>
+                                <h5>Record or Write FRS</h5>
+                                <p class="text-muted small">Use browser extension or write requirements</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="feature-icon bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-3-circle-fill fs-3"></i>
+                                </div>
+                                <h5>Generate & Execute</h5>
+                                <p class="text-muted small">AI creates and runs your test scripts</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="feature-icon bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-4-circle-fill fs-3"></i>
+                                </div>
+                                <h5>View Results</h5>
+                                <p class="text-muted small">Get detailed test reports instantly</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">🔧 Self-Healing Automation</h5>
-                <p class="card-text">Automatically detect and fix failed test locators</p>
-                <a href="/projects" class="btn btn-primary">View Projects</a>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-lightning-charge-fill text-warning" style="font-size: 2.5rem;"></i>
+                    <h5 class="mt-3">Fast Test Creation</h5>
+                    <p class="text-muted small">Generate tests in seconds with AI assistance</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-code-square text-primary" style="font-size: 2.5rem;"></i>
+                    <h5 class="mt-3">Production Ready</h5>
+                    <p class="text-muted small">Get clean, executable C# Playwright code</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-repeat text-success" style="font-size: 2.5rem;"></i>
+                    <h5 class="mt-3">Continuous Testing</h5>
+                    <p class="text-muted small">Run automated tests anytime, anywhere</p>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">📊 Defect Prediction</h5>
-                <p class="card-text">ML-powered risk analysis and defect prediction</p>
-                <a href="/projects" class="btn btn-primary">Analyze</a>
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
 
-<div class="mt-5">
-    <h2>Architecture</h2>
-    <ul>
-        <li><strong>Frontend:</strong> Blazor WebAssembly</li>
-        <li><strong>Backend:</strong> ASP.NET Core Web API</li>
-        <li><strong>AI/ML:</strong> MCP (Model Context Protocol) Integration</li>
-        <li><strong>Database:</strong> SQL Server with EF Core</li>
-        <li><strong>Automation:</strong> Selenium/Playwright Support</li>
-    </ul>
-</div>
+    .modern-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .modern-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .bg-gradient-secondary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .modern-btn {
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .modern-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary.modern-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .btn-secondary.modern-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .feature-icon {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+</style>
