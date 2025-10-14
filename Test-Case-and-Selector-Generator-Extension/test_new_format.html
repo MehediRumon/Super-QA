@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test New Format - Gherkin Steps and Locators</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, button {
+            padding: 8px;
+            font-size: 14px;
+            width: 100%;
+            max-width: 300px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: auto;
+            padding: 10px 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .info-box {
+            background-color: #f0f8ff;
+            border: 1px solid #007bff;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 5px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .example {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-left: 3px solid #28a745;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test New Format - Gherkin Steps and Locators</h1>
+    <p>This page demonstrates the new format for Gherkin steps and locators.</p>
+
+    <form>
+        <div class="form-group">
+            <label for="OrganizationId">Target Entry Organization:</label>
+            <select id="OrganizationId">
+                <option value="">Select...</option>
+                <option value="udvash">Udvash</option>
+                <option value="english_medium">English Medium School</option>
+                <option value="science_college">Science College</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="StudentName">Student Name:</label>
+            <input type="text" id="StudentName" placeholder="Enter student name">
+        </div>
+
+        <div class="form-group">
+            <label for="EmailAddress">Email Address:</label>
+            <input type="email" id="EmailAddress" placeholder="Enter email">
+        </div>
+
+        <div class="form-group">
+            <label for="DepartmentSelect">Department:</label>
+            <select id="DepartmentSelect" name="department">
+                <option value="">Choose Department...</option>
+                <option value="cs">Computer Science</option>
+                <option value="math">Mathematics</option>
+                <option value="physics">Physics</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <button type="button" id="SubmitButton">Submit Form</button>
+        </div>
+    </form>
+
+    <div class="info-box">
+        <h3>Expected Output Format</h3>
+        
+        <p><strong>Before (Old Format):</strong></p>
+        <div class="example">
+            Gherkin Step: When Select Target Entry Organization "&lt;Organization&gt;"<br>
+            Locator: public static By Organization => By.XPath("//select[@id='OrganizationId']");
+        </div>
+
+        <p><strong>After (New Format):</strong></p>
+        <div class="example">
+            Select Target Entry Organization "Udvash" (//select[@id='OrganizationId'])
+        </div>
+
+        <h3>How to Test:</h3>
+        <ol>
+            <li>Enable the extension in Chrome (chrome://extensions/)</li>
+            <li>Set a Menu Name (e.g., "Target Entry") in the extension popup</li>
+            <li>Enable Collection toggle</li>
+            <li>Fill in the fields above (e.g., select "Udvash" from Organization dropdown)</li>
+            <li>Click on the fields you filled</li>
+            <li>Open the View tab in the extension to see the collected data</li>
+            <li><strong>Live Preview:</strong> Keep the View tab open and click elements - it will update in real-time!</li>
+        </ol>
+
+        <h3>Expected Results:</h3>
+        <ul>
+            <li>Gherkin steps should NOT have "When" prefix</li>
+            <li>Gherkin steps should show actual values (e.g., "Udvash") instead of placeholders (e.g., "&lt;Organization&gt;")</li>
+            <li>Format should combine step and locator in one line: Step "Value" (xpath)</li>
+            <li>Example: Select Target Entry Organization "Udvash" (//select[@id='OrganizationId'])</li>
+            <li>View tab should update automatically when you collect new elements (live preview)</li>
+        </ul>
+    </div>
+</body>
+</html>

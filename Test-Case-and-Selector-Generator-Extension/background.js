@@ -1,50 +1,188 @@
-// Background service worker for SuperQA Test Generator Extension
+﻿
+let isEnabled = false;
+let elementClassName = 'ElementClass';
+let menuName = '';
+let pageClassName = 'PageClass';
 
-console.log('[SuperQA] Background service worker loaded');
+chrome.storage.sync.get(['extensionEnabled', 'elementClassName', 'menuName', 'pageClassName'], (result) => {
+    isEnabled = result.extensionEnabled ?? false;
+    elementClassName = result.elementClassName || elementClassName;
+    menuName = result.menuName || '';
+    pageClassName = result.pageClassName || pageClassName;
+});
 
-// Listen for extension installation
-chrome.runtime.onInstalled.addListener((details) => {
-    if (details.reason === 'install') {
-        console.log('[SuperQA] Extension installed');
-        
-        // Initialize storage
-        chrome.storage.local.set({
-            isRecording: false,
-            recordedSteps: [],
-            testName: ''
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'toggle') {
+        isEnabled = message.value;
+    } else if (message.action === 'setClassName') {
+        elementClassName = message.value;
+        chrome.storage.sync.set({ elementClassName });
+    } else if (message.action === 'setPageClassName') {
+        pageClassName = message.value;
+        chrome.storage.sync.set({ pageClassName });
+    } else if (message.action === 'setMenuName') {
+        menuName = message.value;
+        chrome.storage.sync.set({ menuName });
+    } else if (message.action === 'reset') {
+        chrome.storage.sync.set({
+            collectedLocators: [],
+            collectedGherkinSteps: [],
+            collectedMethods: [],
+            collectedParamValues: [] 
+        }, () => {
+            chrome.storage.local.set({ urls: [], actions: [] });
         });
-    } else if (details.reason === 'update') {
-        console.log('[SuperQA] Extension updated');
+    } else if (message.action === 'downloadToPath') {
+        // Handle custom path downloads
+        const { filename, content, downloadPath } = message;
+        
+        if (downloadPath && downloadPath.trim().length > 0) {
+            // Create blob URL for the content
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            // Chrome Downloads API can only download to Downloads folder or subfolders
+            // So we'll use saveAs to let user choose the location
+            chrome.downloads.download({
+                url: url,
+                filename: filename, // Just the filename, not the full path
+                saveAs: true // This will open the save dialog with the custom path suggestion
+            }, (downloadId) => {
+                if (chrome.runtime.lastError) {
+                    console.error('Download failed:', chrome.runtime.lastError.message);
+                    sendResponse({ success: false, error: chrome.runtime.lastError.message });
+                } else {
+                    console.log('File download started with save dialog');
+                    sendResponse({ success: true, saveAs: true, suggestedPath: downloadPath });
+                }
+                
+                // Clean up the blob URL
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 1000);
+            });
+            
+            return true; // Keep message channel open for async response
+        } else {
+            sendResponse({ success: false, error: 'No download path specified' });
+        }
     }
 });
 
-// Handle messages from popup and content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'stepRecorded') {
-        // Forward step to popup if it's open
-        chrome.runtime.sendMessage(message).catch(() => {
-            // Popup might not be open, store in storage instead
-            chrome.storage.local.get(['recordedSteps'], (data) => {
-                const steps = data.recordedSteps || [];
-                steps.push(message.step);
-                chrome.storage.local.set({ recordedSteps: steps });
+function extractAction(url) {
+    try {
+        const pathSegments = new URL(url).pathname.split('/');
+        return pathSegments.pop() || pathSegments.pop(); // handle trailing slash
+    } catch (e) {
+        return 'Unknown';
+    }
+}
+
+// Store request payloads temporarily
+const requestPayloads = new Map();
+
+// Clean up old payloads every 5 minutes to prevent memory leaks
+setInterval(() => {
+    // Keep only recent payloads (older than 5 minutes will be removed)
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    for (const [requestId, data] of requestPayloads.entries()) {
+        if (data.timestamp < fiveMinutesAgo) {
+            requestPayloads.delete(requestId);
+        }
+    }
+}, 5 * 60 * 1000);
+
+// Listen for request bodies (payloads)
+chrome.webRequest.onBeforeRequest.addListener(
+    function (details) {
+        if (details.requestBody) {
+            let payload = null;
+            
+            try {
+                // Handle form data
+                if (details.requestBody.formData) {
+                    payload = details.requestBody.formData;
+                }
+                // Handle raw data (JSON, XML, etc.)
+                else if (details.requestBody.raw && details.requestBody.raw.length > 0) {
+                    try {
+                        const decoder = new TextDecoder('utf-8');
+                        const rawData = details.requestBody.raw.map(data => {
+                            if (data.bytes) {
+                                return decoder.decode(new Uint8Array(data.bytes));
+                            }
+                            return '';
+                        }).join('');
+                        
+                        if (rawData.trim()) {
+                            // Try to parse as JSON for better formatting
+                            try {
+                                payload = JSON.parse(rawData);
+                            } catch {
+                                // If not JSON, keep as string
+                                payload = rawData;
+                            }
+                        }
+                    } catch (e) {
+                        payload = '[Unable to decode payload]';
+                    }
+                }
+                
+                if (payload) {
+                    requestPayloads.set(details.requestId, {
+                        payload: payload,
+                        timestamp: Date.now()
+                    });
+                }
+            } catch (e) {
+                // Log error but don't break the extension
+                console.warn('Error processing request payload:', e);
+            }
+        }
+    },
+    { urls: ["<all_urls>"] },
+    ["requestBody"]
+);
+
+chrome.webRequest.onCompleted.addListener(
+    function (details) {
+        chrome.storage.local.get(['loggingEnabled', 'urls', 'filterDomain', 'actions'], (data) => {
+            if (!data.loggingEnabled) return;
+
+            const domainFilter = (data.filterDomain || '').trim().toLowerCase();
+            if (domainFilter && !details.url.toLowerCase().includes(domainFilter)) return;
+
+            const action = extractAction(details.url);
+            let urls = data.urls || [];
+            const actions = new Set(data.actions || []);
+
+            const exists = urls.some(u => u.url === details.url && u.method === details.method);
+            if (exists) return;
+
+            // Get the payload if it exists
+            const payloadData = requestPayloads.get(details.requestId);
+            const payload = payloadData ? payloadData.payload : null;
+            
+            const requestData = {
+                action,
+                url: details.url,
+                method: details.method,
+                time: new Date().toLocaleTimeString(),
+                payload: payload || null
+            };
+
+            urls.push(requestData);
+            actions.add(action);
+
+            // Clean up the payload from memory
+            requestPayloads.delete(details.requestId);
+
+            chrome.storage.local.set({
+                urls,
+                actions: Array.from(actions)
             });
         });
-    }
-    
-    return true;
-});
-
-// Listen for tab updates to inject content script if recording is active
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete') {
-        chrome.storage.local.get(['isRecording'], (data) => {
-            if (data.isRecording) {
-                chrome.tabs.sendMessage(tabId, { action: 'startRecording' }).catch(() => {
-                    // Content script might not be ready yet
-                    console.log('[SuperQA] Content script not ready on tab', tabId);
-                });
-            }
-        });
-    }
-});
+    },
+    { urls: ["<all_urls>"] },
+    ["responseHeaders"]
+);

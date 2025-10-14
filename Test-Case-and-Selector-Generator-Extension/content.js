@@ -1,274 +1,374 @@
-// Content script for recording user interactions and generating Gherkin steps
+﻿// --- Extension state and configuration variables ---
+// === SECTION: Extension state & config (loads/saves flags and UI labels) ===
+let isEnabled = false;
+let elementClassName = 'ElementClass';
+let menuName = '';
 
-let isRecording = false;
-let stepCounter = 0;
+// --- Load settings from Chrome storage when extension loads ---
+if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync) {
+    chrome.storage.sync.get(['extensionEnabled', 'elementClassName', 'menuName'], (result) => {
+        isEnabled = result.extensionEnabled ?? false;
+        elementClassName = result.elementClassName || elementClassName;
+        menuName = result.menuName || '';
+    });
 
-// Listen for messages from popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'startRecording') {
-        startRecording();
-        sendResponse({ success: true });
-    } else if (message.action === 'stopRecording') {
-        stopRecording();
-        sendResponse({ success: true });
-    }
-    return true;
-});
-
-// Check if recording is already active
-chrome.storage.local.get(['isRecording'], (data) => {
-    if (data.isRecording) {
-        startRecording();
-    }
-});
-
-function startRecording() {
-    if (isRecording) return;
-    
-    isRecording = true;
-    console.log('[SuperQA] Recording started');
-    
-    // Add event listeners for various interactions
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('input', handleInput, true);
-    document.addEventListener('change', handleChange, true);
-    document.addEventListener('submit', handleSubmit, true);
-}
-
-function stopRecording() {
-    if (!isRecording) return;
-    
-    isRecording = false;
-    console.log('[SuperQA] Recording stopped');
-    
-    // Remove event listeners
-    document.removeEventListener('click', handleClick, true);
-    document.removeEventListener('input', handleInput, true);
-    document.removeEventListener('change', handleChange, true);
-    document.removeEventListener('submit', handleSubmit, true);
-}
-
-function handleClick(event) {
-    if (!isRecording) return;
-    
-    const element = event.target;
-    const tag = element.tagName.toLowerCase();
-    
-    // Ignore clicks on the extension UI itself
-    if (element.closest('[data-superqa-extension]')) return;
-    
-    let step = null;
-    
-    if (tag === 'a') {
-        step = createStep('When', `I click the link "${getElementText(element)}"`, 'click', getSelector(element));
-    } else if (tag === 'button' || element.type === 'submit') {
-        step = createStep('When', `I click the "${getElementText(element)}" button`, 'click', getSelector(element));
-    } else if (tag === 'input' && element.type === 'checkbox') {
-        const action = element.checked ? 'check' : 'uncheck';
-        step = createStep('When', `I ${action} the "${getLabel(element)}" checkbox`, action, getSelector(element));
-    } else if (tag === 'input' && element.type === 'radio') {
-        step = createStep('When', `I select the "${getLabel(element)}" radio button`, 'click', getSelector(element));
-    } else {
-        // Generic click
-        const text = getElementText(element);
-        if (text) {
-            step = createStep('When', `I click on "${text}"`, 'click', getSelector(element));
-        } else {
-            step = createStep('When', `I click on ${tag}`, 'click', getSelector(element));
+    // Listen for storage changes to keep menuName updated
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace === 'sync' && changes.menuName) {
+            menuName = changes.menuName.newValue || '';
+            console.log('Content script updated menuName to:', menuName);
         }
-    }
-    
-    if (step) {
-        sendStepToPopup(step);
-    }
-}
-
-function handleInput(event) {
-    if (!isRecording) return;
-    
-    const element = event.target;
-    const tag = element.tagName.toLowerCase();
-    
-    if (tag === 'input' || tag === 'textarea') {
-        const label = getLabel(element) || element.placeholder || element.name || 'input field';
-        const value = element.value;
-        
-        // Debounce input events
-        clearTimeout(element._inputTimeout);
-        element._inputTimeout = setTimeout(() => {
-            const step = createStep('When', `I enter "${value}" into the "${label}" field`, 'fill', getSelector(element), value);
-            sendStepToPopup(step);
-        }, 500);
-    }
-}
-
-function handleChange(event) {
-    if (!isRecording) return;
-    
-    const element = event.target;
-    const tag = element.tagName.toLowerCase();
-    
-    if (tag === 'select') {
-        const label = getLabel(element) || element.name || 'dropdown';
-        const selectedOption = element.options[element.selectedIndex];
-        const value = selectedOption ? selectedOption.text : element.value;
-        
-        const step = createStep('When', `I select "${value}" from the "${label}" dropdown`, 'select', getSelector(element), value);
-        sendStepToPopup(step);
-    }
-}
-
-function handleSubmit(event) {
-    if (!isRecording) return;
-    
-    const form = event.target;
-    const step = createStep('When', 'I submit the form', 'click', getSelector(form) + ' button[type="submit"]');
-    sendStepToPopup(step);
-}
-
-function createStep(keyword, description, action, locator, value = '') {
-    stepCounter++;
-    return {
-        id: stepCounter,
-        keyword: keyword,
-        description: description,
-        action: action,
-        locator: locator,
-        value: value,
-        timestamp: Date.now()
-    };
-}
-
-function sendStepToPopup(step) {
-    chrome.runtime.sendMessage({
-        action: 'stepRecorded',
-        step: step
+        if (namespace === 'sync' && changes.elementClassName) {
+            elementClassName = changes.elementClassName.newValue || elementClassName;
+        }
+        if (namespace === 'sync' && changes.extensionEnabled) {
+            isEnabled = changes.extensionEnabled.newValue ?? false;
+        }
     });
 }
 
-function getSelector(element) {
-    // Priority: ID > data-testid > name > class > CSS path
-    
-    // Try ID
-    if (element.id) {
-        return `#${element.id}`;
+// === SECTION: Injects CSS used to visually highlight matched elements ===
+function injectHighlightStyle() {
+    if (!document.getElementById('qa-highlight-style')) {
+        const style = document.createElement('style');
+        style.id = 'qa-highlight-style';
+        style.innerHTML = `
+            .highlighted-element-qa-ext {
+                outline: 3px solid #0ea5e9 !important;
+                transition: outline 0.2s;
+            }
+        `;
+        document.head.appendChild(style);
     }
-    
-    // Try data-testid
-    if (element.dataset.testid) {
-        return `[data-testid="${element.dataset.testid}"]`;
-    }
-    
-    // Try name attribute
-    if (element.name) {
-        return `[name="${element.name}"]`;
-    }
-    
-    // Try aria-label
-    if (element.getAttribute('aria-label')) {
-        return `[aria-label="${element.getAttribute('aria-label')}"]`;
-    }
-    
-    // Try class (if not too generic)
-    if (element.className && typeof element.className === 'string') {
-        const classes = element.className.split(' ').filter(c => c && !c.match(/^(active|hover|focus|selected)$/i));
-        if (classes.length > 0 && classes.length <= 3) {
-            return `.${classes[0]}`;
+}
+injectHighlightStyle(); // Run once on content script load
+
+
+// --- Listen for runtime messages to update state/configuration dynamically ---
+// === SECTION: Runtime message handler (toggle, class name, menu name updates) ===
+if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.action === 'toggle') {
+            isEnabled = message.value;
+        } else if (message.action === 'setClassName') {
+            elementClassName = message.value;
+            if (chrome.storage && chrome.storage.sync) {
+                chrome.storage.sync.set({ elementClassName });
+            }
+        } else if (message.action === 'setMenuName') {
+            menuName = message.value;
+            if (chrome.storage && chrome.storage.sync) {
+                chrome.storage.sync.set({ menuName });
+            }
         }
-    }
-    
-    // Try text content for links and buttons
-    const tag = element.tagName.toLowerCase();
-    if ((tag === 'a' || tag === 'button') && element.textContent.trim()) {
-        const text = element.textContent.trim().substring(0, 30);
-        return `${tag}:has-text("${text}")`;
-    }
-    
-    // Fallback to CSS path
-    return getCssPath(element);
+    });
 }
 
-function getCssPath(element) {
-    const path = [];
-    let current = element;
-    
-    while (current && current.nodeType === Node.ELEMENT_NODE) {
-        let selector = current.tagName.toLowerCase();
-        
-        if (current.id) {
-            selector += `#${current.id}`;
-            path.unshift(selector);
-            break;
+// --- Gherkin step templates ---
+// === SECTION: Gherkin step templates (Click/Enter/Select) ===
+const stepTemplates = {
+    click: (label) => `${insertMenu('Click on', label)}`,
+    enter: (label, value) => `${insertMenu('Enter', label)} "${value}"`,
+    select: (label, value) => `${insertMenu('Select', label)} "${value}"`,
+};
+
+// --- Helper for inserting menu name if available ---
+// === SECTION: Utility to prefix steps with menu name when provided ===
+function insertMenu(verb, label) {
+    const result = menuName && menuName.trim().length > 0
+        ? `${verb} ${menuName.trim()} ${label}`
+        : `${verb} ${label}`;
+    console.log('Generated step with menuName:', menuName, '→', result);
+    return result;
+}
+
+
+
+// --- Save Gherkin step and locators to Chrome storage ---
+// === SECTION: Persists merged steps with locators to chrome.storage ===
+function saveGherkinStepWithParams(mergedStepWithLocator, locatorCode, methodCode) {
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync) {
+        chrome.storage.sync.get(['collectedGherkinSteps'], (result) => {
+            let gherkinSteps = result.collectedGherkinSteps || [];
+
+            gherkinSteps.push(mergedStepWithLocator);
+
+            chrome.storage.sync.set({
+                collectedGherkinSteps: gherkinSteps,
+            });
+        });
+    }
+}
+
+
+
+// --- LOCATOR HIGHLIGHTER: Highlights element(s) by XPath for 3 seconds ---
+// === SECTION: Highlight helpers (clear, single element, evaluate XPath & highlight) ===
+function clearPreviousHighlights() {
+    document.querySelectorAll('.highlighted-element-qa-ext').forEach(el => {
+        el.classList.remove('highlighted-element-qa-ext');
+    });
+}
+
+function highlightElement(element) {
+    if (!element) return;
+    clearPreviousHighlights(); // Clear old highlights first
+    element.classList.add('highlighted-element-qa-ext');
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Optionally, remove after 3 seconds (optional)
+    setTimeout(() => {
+        element.classList.remove('highlighted-element-qa-ext');
+    }, 3000);
+}
+
+function highlightElementsByXpath(xpath) {
+    try {
+        clearPreviousHighlights();
+        const evaluator = new XPathEvaluator();
+        const result = evaluator.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        for (let i = 0; i < result.snapshotLength; i++) {
+            highlightElement(result.snapshotItem(i));
+        }
+    } catch (err) {
+        console.warn('Invalid XPath for highlight:', xpath);
+    }
+}
+
+
+// Highlight all elements matched by the given XPath
+function highlightElementsByXpath(xpath) {
+    try {
+        const evaluator = new XPathEvaluator();
+        const result = evaluator.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        for (let i = 0; i < result.snapshotLength; i++) {
+            highlightElement(result.snapshotItem(i));
+        }
+    } catch (err) {
+        // Optionally handle invalid XPath
+        console.warn('Invalid XPath for highlight:', xpath);
+    }
+}
+
+// --- Main event listener for click collection on page elements ---
+// === SECTION: Click listener – derives human text + builds XPath + saves output ===
+document.addEventListener('click', function (e) {
+    if (!isEnabled) return;
+
+    let label = null;
+    let input = null;
+    let text = '';
+    let gherkinStep = '';
+
+    // --- If a label was clicked ---
+    if (e.target.tagName === 'LABEL') {
+        label = e.target;
+        text = getDirectText(label);
+        const forId = label.getAttribute('for');
+        input = forId ? document.getElementById(forId) : label.querySelector('input,select,textarea');
+
+        if (text && text.trim().length > 0) {
+            text = text.trim().replace(/[:\.\,\;]+$/, '');
+            const bracketText = text.replace(/\s+/g, '').replace(/[:\.\,\;]+$/, '');
+            const humanReadable = toHumanReadable(bracketText);
+            gherkinStep = stepTemplates.click(humanReadable);
+            text = humanReadable;
+        }
+    }
+    // --- If an input/select/textarea/button was clicked ---
+    else if (["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
+        input = e.target;
+        const inputType = e.target.type?.toLowerCase() || '';
+
+        // Handle buttons/checkboxes/radios
+        if (
+            e.target.tagName === 'BUTTON' ||
+            ['button', 'submit', 'reset', 'checkbox', 'radio'].includes(inputType)
+        ) {
+            label = getLabelForInput(input);
+            if (label) text = getDirectText(label);
+            if (!text) text = input.getAttribute('name') || input.id || e.target.innerText || e.target.value || 'Button';
+            
+            text = text.replace(/[:\.\,\;]+$/, '');
+            text = toHumanReadable(text);
+            gherkinStep = stepTemplates.click(text);
         } else {
-            let sibling = current;
-            let nth = 1;
-            
-            while (sibling.previousElementSibling) {
-                sibling = sibling.previousElementSibling;
-                if (sibling.tagName === current.tagName) {
-                    nth++;
-                }
+            // Handle other inputs/selects
+            label = getLabelForInput(input);
+            if (label) text = getDirectText(label);
+            if (!text) text = input.getAttribute('name') || input.id || input.getAttribute('placeholder') || '';
+            text = text.replace(/[:\.\,\;]+$/, '');
+            const bracketText = text.replace(/\s+/g, '').replace(/[:\.\,\;]+$/, '');
+            const humanReadableText = toHumanReadable(bracketText);
+
+            if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
+                // Get the actual value from the input
+                const actualValue = input.value || '';
+                gherkinStep = stepTemplates.enter(humanReadableText, actualValue);
+            } else if (input.tagName === 'SELECT') {
+                // Get the selected option text
+                const selectedOption = input.options[input.selectedIndex];
+                const selectedText = selectedOption ? selectedOption.text : '';
+                gherkinStep = stepTemplates.select(humanReadableText, selectedText);
             }
-            
-            if (nth > 1) {
-                selector += `:nth-of-type(${nth})`;
-            }
+            text = humanReadableText;
         }
-        
-        path.unshift(selector);
-        current = current.parentElement;
-        
-        // Limit depth
-        if (path.length > 5) break;
+    } else {
+        return;
     }
+
+    if (!text || text.length === 0) return;
+    let cleaned = text.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
+    if (cleaned.length === 0) return;
+
+    // --- XPath generation logic ---
+    let xpath = '';
+    if (input) {
+        // Check for multiselect dropdown with hidden select element
+        const multiselectXPath = checkForMultiselectDropdown(input);
+        if (multiselectXPath) {
+            xpath = multiselectXPath;
+        } else if (input.getAttribute('data-testid')) {
+            // First priority: data-testid attribute
+            const dtid = input.getAttribute('data-testid').replace(/"/g, '\\"');
+            const tag = (input && input.tagName ? input.tagName.toLowerCase() : '*');
+            xpath = `//${tag}[@data-testid='${dtid}']`;
+        } else if (input.id) {
+            let tag = input.tagName.toLowerCase();
+            xpath = `//${tag}[@id='${input.id}']`;
+        } else {
+            xpath = generateFallbackXPath(input);
+        }
+    }
+
+    // --- NEW: Highlight the located element(s) on the page! ---
+    if (xpath) {
+        highlightElementsByXpath(xpath);
+    }
+
+    // Generate merged format combining Gherkin step with XPath in parentheses
+    // Format: "Select Target Entry Organization "Udvash" (//select[@id='OrganizationId'])"
+    let mergedStepWithLocator = `${gherkinStep} (${xpath})`;
     
-    return path.join(' > ');
+    let methodCode = `public IWebElement Get${cleaned}() => driver.FindElement(${elementClassName}.${cleaned});`;
+
+    // --- Save merged format
+    saveGherkinStepWithParams(mergedStepWithLocator, '', methodCode);
+
+    showToast(`Collected: ${gherkinStep}`);
+});
+
+// --- Helper: Get direct text content of an element ---
+// === SECTION: Text/Label helpers used for human-readable Gherkin text ===
+function getDirectText(element) {
+    let directText = '';
+    element.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            directText += node.nodeValue.trim() + ' ';
+        }
+    });
+    // Clean up the text by removing trailing punctuation like colons, periods, etc.
+    return directText.trim().replace(/[:\.\,\;]+$/, '');
 }
 
-function getElementText(element) {
-    // Get text content, trimmed and cleaned
-    let text = element.textContent || element.value || element.innerText || '';
-    text = text.trim().replace(/\s+/g, ' ');
-    
-    // Limit length
-    if (text.length > 50) {
-        text = text.substring(0, 50) + '...';
+// --- Helper: Find the label for a given input element ---
+function getLabelForInput(input) {
+    if (input.id) {
+        const explicit = document.querySelector(`label[for='${input.id}']`);
+        if (explicit) return explicit;
     }
-    
-    return text;
-}
-
-function getLabel(element) {
-    // Try to find associated label
-    if (element.id) {
-        const label = document.querySelector(`label[for="${element.id}"]`);
-        if (label) {
-            return label.textContent.trim();
+    let el = input;
+    while (el && el !== document.body) {
+        let prev = el.previousElementSibling;
+        while (prev) {
+            if (prev.tagName === 'LABEL') return prev;
+            prev = prev.previousElementSibling;
         }
+        if (el.parentElement?.tagName === 'LABEL') return el.parentElement;
+        el = el.parentElement;
     }
-    
-    // Try parent label
-    const parentLabel = element.closest('label');
-    if (parentLabel) {
-        return parentLabel.textContent.trim();
-    }
-    
-    // Try aria-label
-    if (element.getAttribute('aria-label')) {
-        return element.getAttribute('aria-label');
-    }
-    
-    // Try placeholder
-    if (element.placeholder) {
-        return element.placeholder;
-    }
-    
-    // Try name
-    if (element.name) {
-        return element.name;
-    }
-    
     return null;
 }
 
-console.log('[SuperQA] Content script loaded');
+// --- Helper: Convert text to human-readable format ---
+// === SECTION: Human-readable capitalization utilities ===
+function toHumanReadable(text) {
+    return text.replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+// --- Helper: Show a toast notification at the bottom of the page ---
+// === SECTION: Minimal toast notification for immediate feedback ===
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.background = 'rgba(0,0,0,0.7)';
+    toast.style.color = 'white';
+    toast.style.padding = '8px 12px';
+    toast.style.borderRadius = '5px';
+    toast.style.zIndex = 10000;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 1500);
+}
+
+// --- Helper: Multiselect dropdown detection and XPath generation ---
+// === SECTION: Detects custom multiselect UI bound to a hidden <select> ===
+function checkForMultiselectDropdown(input) {
+    // Check if input is inside a span that contains a select element
+    let currentElement = input;
+    while (currentElement && currentElement !== document.body) {
+        currentElement = currentElement.parentElement;
+        if (currentElement && currentElement.tagName === 'SPAN') {
+            const selectElement = currentElement.querySelector('select');
+            if (selectElement) {
+                const buttonElement = currentElement.querySelector('select + div button, select ~ div button');
+                if (buttonElement) {
+                    if (selectElement.id) {
+                        return `//select[@id='${selectElement.id}']/following-sibling::div//button`;
+                    } else if (selectElement.name) {
+                        return `//select[@name='${selectElement.name}']/following-sibling::div//button`;
+                    } else if (selectElement.className) {
+                        const firstClass = selectElement.className.split(' ')[0];
+                        return `//select[@class='${firstClass}']/following-sibling::div//button`;
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+// --- Helper: Fallback XPath generator for generic input/select/textarea elements ---
+// === SECTION: Fallback XPath builder when id/data-testid aren't available ===
+function generateFallbackXPath(input) {
+    // Priority fallback: data-testid if present
+    if (input && input.getAttribute && input.getAttribute('data-testid')) {
+        const dtid = input.getAttribute('data-testid').replace(/"/g, '\\"');
+        return `//*[@data-testid='${dtid}']`;
+    }
+    // First check if this might be part of a multiselect dropdown
+    const multiselectXPath = checkForMultiselectDropdown(input);
+    if (multiselectXPath) {
+        return multiselectXPath;
+    }
+    let tag = input.tagName.toLowerCase();
+    if (input.name) {
+        return `//${tag}[@name='${input.name}']`;
+    } else if (input.getAttribute('placeholder')) {
+        let placeholder = input.getAttribute('placeholder').replace(/"/g, '');
+        return `//${tag}[@placeholder='${placeholder}']`;
+    } else {
+        return `//${tag}`;
+    }
+}
