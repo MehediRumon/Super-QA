@@ -134,7 +134,7 @@ public class PlaywrightController : ControllerBase
             }
 
             // Convert extension steps to FRS text
-            var frsText = GenerateFrsFromSteps(request.Steps);
+            var frsText = GenerateFrsFromSteps(request.Steps, request.TestName);
 
             string? pageStructure = null;
             string? inspectionWarning = null;
@@ -179,9 +179,16 @@ public class PlaywrightController : ControllerBase
         }
     }
 
-    private string GenerateFrsFromSteps(List<BrowserExtensionStep> steps)
+    private string GenerateFrsFromSteps(List<BrowserExtensionStep> steps, string? testName = null)
     {
-        var frs = "Browser Extension Recorded Steps:\n\n";
+        var frs = "";
+        
+        if (!string.IsNullOrWhiteSpace(testName))
+        {
+            frs += $"Test Name: {testName}\n\n";
+        }
+        
+        frs += "Browser Extension Recorded Steps:\n\n";
         for (int i = 0; i < steps.Count; i++)
         {
             var step = steps[i];

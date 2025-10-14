@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperQA Test Generator</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SuperQA Test Generator</h1>
+            <p class="subtitle">Record interactions and generate Gherkin tests</p>
+        </header>
+
+        <div class="test-name-section">
+            <label for="testName">Test Name:</label>
+            <input type="text" id="testName" placeholder="e.g., User Login Test" required>
+            <small>Enter a descriptive name for your test case</small>
+        </div>
+
+        <div class="control-buttons">
+            <button id="startRecording" class="btn btn-primary">
+                <span class="icon">●</span> Start Recording
+            </button>
+            <button id="stopRecording" class="btn btn-secondary" disabled>
+                <span class="icon">■</span> Stop Recording
+            </button>
+            <button id="clearSteps" class="btn btn-danger">
+                <span class="icon">🗑</span> Clear
+            </button>
+        </div>
+
+        <div class="test-output-viewer">
+            <div class="viewer-header">
+                <h2>Test Output Viewer</h2>
+                <span class="step-count">0 steps recorded</span>
+            </div>
+            <div id="gherkinSteps" class="gherkin-steps">
+                <div class="empty-state">
+                    <p>No steps recorded yet</p>
+                    <p class="hint">Click "Start Recording" to begin capturing interactions</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="superqa-section">
+            <button id="sendToSuperQA" class="btn btn-success btn-large" disabled>
+                <span class="icon">🚀</span> Send to SuperQA
+            </button>
+            <div id="statusMessage" class="status-message"></div>
+        </div>
+
+        <footer>
+            <p>SuperQA Extension v1.0.0</p>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
