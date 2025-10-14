@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SuperQA.Core.Entities;
 using SuperQA.Core.Interfaces;
+using SuperQA.Infrastructure.Data;
 using SuperQA.Shared.DTOs;
 
 namespace SuperQA.Api.Controllers;
@@ -12,13 +15,20 @@ public class PlaywrightController : ControllerBase
     private readonly IPlaywrightTestExecutor _playwrightTestExecutor;
     private readonly IPageInspectorService _pageInspectorService;
     private readonly IUserSettingsService _settingsService;
+    private readonly SuperQADbContext _context;
 
-    public PlaywrightController(IOpenAIService openAIService, IPlaywrightTestExecutor playwrightTestExecutor, IPageInspectorService pageInspectorService, IUserSettingsService settingsService)
+    public PlaywrightController(
+        IOpenAIService openAIService, 
+        IPlaywrightTestExecutor playwrightTestExecutor, 
+        IPageInspectorService pageInspectorService, 
+        IUserSettingsService settingsService,
+        SuperQADbContext context)
     {
         _openAIService = openAIService;
         _playwrightTestExecutor = playwrightTestExecutor;
         _pageInspectorService = pageInspectorService;
         _settingsService = settingsService;
+        _context = context;
     }
 
     [HttpPost("generate")]
@@ -162,11 +172,48 @@ public class PlaywrightController : ControllerBase
                 model,
                 pageStructure);
 
+            // Find or create "Tests" project
+            var testsProject = await _context.Projects
+                .FirstOrDefaultAsync(p => p.Name == "Tests");
+            
+            if (testsProject == null)
+            {
+                testsProject = new Project
+                {
+                    Name = "Tests",
+                    Description = "Tests imported from browser extension",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.Projects.Add(testsProject);
+                await _context.SaveChangesAsync();
+            }
+
+            // Create test case from extension data
+            var testCase = new TestCase
+            {
+                ProjectId = testsProject.Id,
+                Title = request.TestName ?? "Extension Test",
+                Description = $"Test imported from browser extension for {request.ApplicationUrl}",
+                Preconditions = $"Navigate to: {request.ApplicationUrl}",
+                Steps = frsText,
+                ExpectedResults = "Test completes successfully",
+                IsAIGenerated = true,
+                AutomationScript = generatedScript,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.TestCases.Add(testCase);
+            await _context.SaveChangesAsync();
+
             return Ok(new PlaywrightTestGenerationResponse
             {
                 Success = true,
                 GeneratedScript = generatedScript,
-                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null
+                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null,
+                TestCaseId = testCase.Id,
+                ProjectId = testsProject.Id
             });
         }
         catch (Exception ex)

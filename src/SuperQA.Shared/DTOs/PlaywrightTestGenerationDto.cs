@@ -14,6 +14,8 @@ public class PlaywrightTestGenerationResponse
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
     public string[]? Warnings { get; set; }
+    public int? TestCaseId { get; set; }
+    public int? ProjectId { get; set; }
 }
 
 public class PlaywrightTestExecutionRequest

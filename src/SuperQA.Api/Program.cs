@@ -19,6 +19,14 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
+    
+    // Allow browser extensions to access the API
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
 });
 
 // Database configuration
@@ -56,7 +64,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowBlazor");
+// Use AllowAll policy to support both Blazor app and browser extensions
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 
