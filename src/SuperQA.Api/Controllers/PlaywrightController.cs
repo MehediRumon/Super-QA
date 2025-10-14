@@ -172,15 +172,15 @@ public class PlaywrightController : ControllerBase
                 model,
                 pageStructure);
 
-            // Find or create "Tests" project
+            // Find or create "Generated Tests" project
             var testsProject = await _context.Projects
-                .FirstOrDefaultAsync(p => p.Name == "Tests");
+                .FirstOrDefaultAsync(p => p.Name == "Generated Tests");
             
             if (testsProject == null)
             {
                 testsProject = new Project
                 {
-                    Name = "Tests",
+                    Name = "Generated Tests",
                     Description = "Tests imported from browser extension",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
