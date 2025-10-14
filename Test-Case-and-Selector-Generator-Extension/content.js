@@ -2,21 +2,21 @@
 // === SECTION: Extension state & config (loads/saves flags and UI labels) ===
 let isEnabled = false;
 let elementClassName = 'ElementClass';
-let menuName = '';
+let testName = '';
 
 // --- Load settings from Chrome storage when extension loads ---
 if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.get(['extensionEnabled', 'elementClassName', 'menuName'], (result) => {
+    chrome.storage.sync.get(['extensionEnabled', 'elementClassName', 'testName'], (result) => {
         isEnabled = result.extensionEnabled ?? false;
         elementClassName = result.elementClassName || elementClassName;
-        menuName = result.menuName || '';
+        testName = result.testName || '';
     });
 
-    // Listen for storage changes to keep menuName updated
+    // Listen for storage changes to keep testName updated
     chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === 'sync' && changes.menuName) {
-            menuName = changes.menuName.newValue || '';
-            console.log('Content script updated menuName to:', menuName);
+        if (namespace === 'sync' && changes.testName) {
+            testName = changes.testName.newValue || '';
+            console.log('Content script updated testName to:', testName);
         }
         if (namespace === 'sync' && changes.elementClassName) {
             elementClassName = changes.elementClassName.newValue || elementClassName;
@@ -55,10 +55,10 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
             if (chrome.storage && chrome.storage.sync) {
                 chrome.storage.sync.set({ elementClassName });
             }
-        } else if (message.action === 'setMenuName') {
-            menuName = message.value;
+        } else if (message.action === 'setTestName') {
+            testName = message.value;
             if (chrome.storage && chrome.storage.sync) {
-                chrome.storage.sync.set({ menuName });
+                chrome.storage.sync.set({ testName });
             }
         }
     });
@@ -67,22 +67,10 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
 // --- Gherkin step templates ---
 // === SECTION: Gherkin step templates (Click/Enter/Select) ===
 const stepTemplates = {
-    click: (label) => `${insertMenu('Click on', label)}`,
-    enter: (label, value) => `${insertMenu('Enter', label)} "${value}"`,
-    select: (label, value) => `${insertMenu('Select', label)} "${value}"`,
+    click: (label) => `Click on ${label}`,
+    enter: (label, value) => `Enter ${label} "${value}"`,
+    select: (label, value) => `Select ${label} "${value}"`,
 };
-
-// --- Helper for inserting menu name if available ---
-// === SECTION: Utility to prefix steps with menu name when provided ===
-function insertMenu(verb, label) {
-    const result = menuName && menuName.trim().length > 0
-        ? `${verb} ${menuName.trim()} ${label}`
-        : `${verb} ${label}`;
-    console.log('Generated step with menuName:', menuName, '→', result);
-    return result;
-}
-
-
 
 // --- Save Gherkin step and locators to Chrome storage ---
 // === SECTION: Persists merged steps with locators to chrome.storage ===

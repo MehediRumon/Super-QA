@@ -5,8 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleSwitch = document.getElementById('toggleSwitch');
     const viewBtn = document.getElementById('viewBtn');
     const resetBtn = document.getElementById('resetBtn');
-    const menuNameInput = document.getElementById('menuNameInput');
-    const actionNameInput = document.getElementById('actionNameInput');
+    const testNameInput = document.getElementById('testNameInput');
     const fabBtn = document.getElementById('fab');
     const themeToggle = document.getElementById('themeToggle');
 
@@ -41,10 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Load extension settings from storage ---
-    chrome.storage.sync.get(['extensionEnabled', 'actionName', 'menuName'], (result) => {
+    chrome.storage.sync.get(['extensionEnabled', 'testName'], (result) => {
         toggleSwitch.checked = result.extensionEnabled ?? false;
-        actionNameInput.value = result.actionName ?? '';
-        menuNameInput.value = result.menuName ?? '';
+        testNameInput.value = result.testName ?? '';
     });
 
     // --- Enable/disable extension ---
@@ -60,23 +58,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- Set action name from input ---
-    actionNameInput?.addEventListener('input', () => {
-        const actionName = actionNameInput.value.trim();
-        chrome.storage.sync.set({ actionName }, () => {
-            console.log('Action name updated:', { actionName });
-        });
-    });
-
-    // --- Set menu name (for Gherkin steps) ---
-    menuNameInput?.addEventListener('input', () => {
-        const menuName = menuNameInput.value.trim();
-        chrome.storage.sync.set({ menuName }, () => {
-            console.log('Menu name updated:', menuName);
+    // --- Set test name from input ---
+    testNameInput?.addEventListener('input', () => {
+        const testName = testNameInput.value.trim();
+        chrome.storage.sync.set({ testName }, () => {
+            console.log('Test name updated:', testName);
         });
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: 'setMenuName', value: menuName }).catch(() => { });
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'setTestName', value: testName }).catch(() => { });
             }
         });
     });
@@ -84,14 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Reset/clear all data & logs ---
     resetBtn?.addEventListener('click', () => {
         showModal("Are you sure you want to clear all data?", () => {
-            const currentActionName = actionNameInput?.value?.trim() || '';
-            const currentMenuName = menuNameInput?.value?.trim() || '';
+            const currentTestName = testNameInput?.value?.trim() || '';
             
             chrome.storage.sync.set({
                 collectedLocators: [],
                 collectedGherkinSteps: [],
-                actionName: currentActionName,
-                menuName: currentMenuName
+                testName: currentTestName
             }, () => {
                 if (chrome.runtime.lastError) {
                     showToast('Error resetting: ' + chrome.runtime.lastError.message, 'error');
@@ -100,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs[0]?.id) {
-                        chrome.tabs.sendMessage(tabs[0].id, { action: 'setMenuName', value: currentMenuName }).catch(() => { });
+                        chrome.tabs.sendMessage(tabs[0].id, { action: 'setTestName', value: currentTestName }).catch(() => { });
                     }
                 });
                 
