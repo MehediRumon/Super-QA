@@ -20,4 +20,5 @@ public class GenerateFromExtensionRequest
     public List<BrowserExtensionStep> Steps { get; set; } = new();
     public string? OpenAIApiKey { get; set; }
     public string? Model { get; set; }
+    public string? TestName { get; set; }
 }
