@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Multiselect Test - All Click Scenarios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .test-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .test-section h3 {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0 5px 0;
+        }
+        .expected {
+            background: #e8f4f8;
+            padding: 10px;
+            border-left: 4px solid #0ea5e9;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .clickable {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .clickable:hover {
+            background: #fffacd !important;
+        }
+        
+        /* Bootstrap Multiselect Styles */
+        .hide-native-select select {
+            display: none;
+        }
+        .btn-group {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        .btn-group.open .dropdown-menu {
+            display: block;
+        }
+        .multiselect {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            width: 100%;
+            text-align: left;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            min-width: 100%;
+            max-height: 300px;
+            overflow: auto;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        }
+        .dropdown-menu li {
+            list-style: none;
+            padding: 5px 10px;
+        }
+        .dropdown-menu li:hover {
+            background: #f5f5f5;
+        }
+        .multiselect-search {
+            width: 90%;
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        
+        /* OSL Custom Multiselect Styles */
+        .osl-custom-multiselect {
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .input-div {
+            position: relative;
+        }
+        .selected-value {
+            min-height: 20px;
+            padding: 5px;
+            background: white;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .list-unstyled {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+        }
+        .list-unstyled li {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .list-unstyled li:hover {
+            background: #e9e9e9;
+        }
+        
+        .scenario {
+            background: #f0f0f0;
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Comprehensive Multiselect Test Suite</h1>
+    <p>This page tests all possible click scenarios for both multiselect patterns.</p>
+    
+    <div class="test-container">
+        <!-- Bootstrap Multiselect Tests -->
+        <div class="test-section">
+            <h2>1️⃣ Bootstrap Multiselect - Main Button Click</h2>
+            <div class="scenario">
+                <strong>Scenario:</strong> Click on the multiselect button itself
+            </div>
+            
+            <span class="hide-native-select">
+                <select class="form-control" id="OrganizationId" multiple="multiple" name="OrganizationId">
+                    <option value="1">UDVASH</option>
+                    <option value="2">UNMESH</option>
+                    <option value="3">ONLINE CARE</option>
+                </select>
+                <div class="btn-group">
+                    <button type="button" class="multiselect dropdown-toggle btn btn-default clickable" data-toggle="dropdown">
+                        <span class="multiselect-selected-text">👉 CLICK HERE - Multiselect Button</span> <b class="caret">▼</b>
+                    </button>
+                    <ul class="multiselect-container dropdown-menu">
+                        <li><a tabindex="0"><label class="checkbox"><input type="checkbox" value="1"> UDVASH</label></a></li>
+                        <li><a tabindex="0"><label class="checkbox"><input type="checkbox" value="2"> UNMESH</label></a></li>
+                        <li><a tabindex="0"><label class="checkbox"><input type="checkbox" value="3"> ONLINE CARE</label></a></li>
+                    </ul>
+                </div>
+            </span>
+            
+            <div class="expected">
+                <strong>Expected XPath:</strong><br>
+                //select[@id='OrganizationId']/following-sibling::div//button
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2️⃣ Bootstrap Multiselect - Checkbox Click</h2>
+            <div class="scenario">
+                <strong>Scenario:</strong> Click on a checkbox inside the dropdown
+            </div>
+            <div class="note">
+                ℹ️ Open dropdown first, then click on a checkbox option
+            </div>
+            
+            <span class="hide-native-select">
+                <select class="form-control" id="ProductId" multiple="multiple" name="ProductId">
+                    <option value="1">Product A</option>
+                    <option value="2">Product B</option>
+                </select>
+                <div class="btn-group open">
+                    <button type="button" class="multiselect dropdown-toggle btn btn-default" data-toggle="dropdown">
+                        <span class="multiselect-selected-text">Products</span> <b class="caret">▼</b>
+                    </button>
+                    <ul class="multiselect-container dropdown-menu">
+                        <li><a tabindex="0"><label class="checkbox clickable">
+                            <input type="checkbox" value="1"> 👉 CLICK - Product A checkbox
+                        </label></a></li>
+                        <li><a tabindex="0"><label class="checkbox clickable">
+                            <input type="checkbox" value="2"> 👉 CLICK - Product B checkbox
+                        </label></a></li>
+                    </ul>
+                </div>
+            </span>
+            
+            <div class="expected">
+                <strong>Expected XPath:</strong><br>
+                //select[@id='ProductId']/following-sibling::div//button
+                <br><br>
+                <strong>Note:</strong> Should generate same XPath as clicking button (correct behavior for automation)
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3️⃣ Bootstrap Multiselect - Search Input Click</h2>
+            <div class="scenario">
+                <strong>Scenario:</strong> Click on search input inside dropdown (with filter)
+            </div>
+            <div class="note">
+                ℹ️ Dropdown is pre-opened for testing
+            </div>
+            
+            <span class="hide-native-select">
+                <select class="form-control" id="CategoryId" multiple="multiple">
+                    <option value="1">Category 1</option>
+                    <option value="2">Category 2</option>
+                </select>
+                <div class="btn-group open">
+                    <button type="button" class="multiselect dropdown-toggle btn btn-default">
+                        <span class="multiselect-selected-text">Categories</span>
+                    </button>
+                    <ul class="multiselect-container dropdown-menu">
+                        <li class="multiselect-filter">
+                            👉 <input class="multiselect-search clickable" type="text" placeholder="CLICK - Search here...">
+                        </li>
+                        <li><a tabindex="0"><label class="checkbox"><input type="checkbox" value="1"> Category 1</label></a></li>
+                        <li><a tabindex="0"><label class="checkbox"><input type="checkbox" value="2"> Category 2</label></a></li>
+                    </ul>
+                </div>
+            </span>
+            
+            <div class="expected">
+                <strong>Expected XPath:</strong><br>
+                //select[@id='CategoryId']/following-sibling::div//button
+                <br><br>
+                <strong>Note:</strong> Should generate multiselect button XPath (correct for automation workflow)
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4️⃣ OSL Custom Multiselect - Search Input Click</h2>
+            <div class="scenario">
+                <strong>Scenario:</strong> Click on the search input field
+            </div>
+            
+            <div class="col-md-4">
+                <div class="osl-custom-multiselect">
+                    <div class="input-div">
+                        <div class="selected-value">Selected: None</div>
+                        <input id="TeacherIds" class="form-control input-search clickable" autocomplete="off" placeholder="👉 CLICK - [TPIN] Name (Batch) ...">
+                        <input type="hidden" autocomplete="off" id="uuu-selected-list-data">
+                    </div>
+                    <ul id="multiselectOptionList" class="list-unstyled">
+                        <li><input class="select" type="checkbox" value="4726"> <span>[4726] - Rumon (2017)</span></li>
+                        <li><input class="select" type="checkbox" value="4727"> <span>[4727] - Ahmed (2018)</span></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="expected">
+                <strong>Expected XPath:</strong><br>
+                //input[@id='TeacherIds']
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5️⃣ OSL Custom Multiselect - Checkbox Click</h2>
+            <div class="scenario">
+                <strong>Scenario:</strong> Click on a checkbox option in the list
+            </div>
+            
+            <div class="col-md-4">
+                <div class="osl-custom-multiselect">
+                    <div class="input-div">
+                        <div class="selected-value">Selected: None</div>
+                        <input id="StudentIds" class="form-control input-search" autocomplete="off" placeholder="Search students...">
+                    </div>
+                    <ul class="list-unstyled">
+                        <li class="clickable">
+                            <input class="select" type="checkbox" value="101"> 
+                            <span>👉 CLICK - [101] - Student One</span>
+                        </li>
+                        <li class="clickable">
+                            <input class="select" type="checkbox" value="102"> 
+                            <span>👉 CLICK - [102] - Student Two</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="expected">
+                <strong>Expected XPath:</strong><br>
+                //input[@id='StudentIds']
+                <br><br>
+                <strong>Note:</strong> Should generate search input XPath (correct - search input is the interaction point)
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>6️⃣ Bootstrap Multiselect - Without ID (Name Attribute)</h2>
+            <div class="scenario">
+                <strong>Scenario:</strong> Multiselect with only name attribute, no ID
+            </div>
+            
+            <span class="hide-native-select">
+                <select class="form-control" multiple="multiple" name="TagsSelection">
+                    <option value="1">Tag 1</option>
+                    <option value="2">Tag 2</option>
+                </select>
+                <div class="btn-group">
+                    <button type="button" class="multiselect clickable">
+                        <span>👉 CLICK - Select Tags</span>
+                    </button>
+                </div>
+            </span>
+            
+            <div class="expected">
+                <strong>Expected XPath:</strong><br>
+                //select[@name='TagsSelection']/following-sibling::div//button
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section" style="margin-top: 20px; background: #e8f5e9; border-color: #4caf50;">
+        <h2>✅ Testing Instructions</h2>
+        <ol style="line-height: 1.8;">
+            <li>Load the browser extension and enable it</li>
+            <li>Click on each highlighted element marked with 👉 CLICK</li>
+            <li>Check the extension output to verify the generated XPath matches the expected result</li>
+            <li>Verify that the element gets highlighted after clicking</li>
+            <li>Check the toast notification appears with the collected step</li>
+        </ol>
+        
+        <h3 style="margin-top: 20px;">🎯 What to Verify:</h3>
+        <ul style="line-height: 1.8;">
+            <li>Bootstrap multiselect button → Generates select XPath with button path</li>
+            <li>Bootstrap multiselect checkboxes → Same XPath as button (correct)</li>
+            <li>Bootstrap multiselect search → Same XPath as button (correct)</li>
+            <li>OSL custom search input → Generates input XPath</li>
+            <li>OSL custom checkboxes → Generates search input XPath (correct)</li>
+            <li>All patterns work with ID, name, or class attributes</li>
+        </ul>
+    </div>
+    
+    <script>
+        // Simple toggle for dropdown demo
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const parent = this.closest('.btn-group');
+                parent.classList.toggle('open');
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.btn-group')) {
+                document.querySelectorAll('.btn-group.open').forEach(el => {
+                    el.classList.remove('open');
+                });
+            }
+        });
+        
+        // Add visual feedback
+        document.querySelectorAll('.clickable').forEach(el => {
+            el.addEventListener('click', function() {
+                this.style.outline = '3px solid #0ea5e9';
+                setTimeout(() => {
+                    this.style.outline = '';
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
