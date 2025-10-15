@@ -163,6 +163,18 @@ document.addEventListener('click', function (e) {
             text = humanReadable;
         }
     }
+    // --- If a link (anchor) was clicked ---
+    else if (e.target.tagName === 'A') {
+        input = e.target;
+        // Get link text or fallback to href or id
+        text = e.target.innerText || e.target.textContent || '';
+        if (!text || text.trim().length === 0) {
+            text = e.target.getAttribute('href') || e.target.id || 'Link';
+        }
+        text = text.trim().replace(/[:\.\,\;]+$/, '');
+        text = toHumanReadable(text);
+        gherkinStep = stepTemplates.click(text);
+    }
     // --- If an input/select/textarea/button was clicked ---
     else if (["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
         input = e.target;
@@ -212,10 +224,29 @@ document.addEventListener('click', function (e) {
     // --- XPath generation logic ---
     let xpath = '';
     if (input) {
+        // Special handling for anchor tags (links)
+        if (input.tagName === 'A') {
+            if (input.getAttribute('data-testid')) {
+                const dtid = input.getAttribute('data-testid').replace(/"/g, '\\"');
+                xpath = `//a[@data-testid='${dtid}']`;
+            } else if (input.id) {
+                xpath = `//a[@id='${input.id}']`;
+            } else if (input.getAttribute('href')) {
+                const href = input.getAttribute('href').replace(/"/g, '\\"');
+                xpath = `//a[@href='${href}']`;
+            } else {
+                // Use link text
+                const linkText = (input.innerText || input.textContent || '').trim();
+                if (linkText) {
+                    xpath = `//a[contains(text(), '${linkText.replace(/"/g, '\\"')}')]`;
+                } else {
+                    xpath = '//a';
+                }
+            }
+        }
         // Check for multiselect dropdown with hidden select element
-        const multiselectXPath = checkForMultiselectDropdown(input);
-        if (multiselectXPath) {
-            xpath = multiselectXPath;
+        else if (checkForMultiselectDropdown(input)) {
+            xpath = checkForMultiselectDropdown(input);
         } else if (input.getAttribute('data-testid')) {
             // First priority: data-testid attribute
             const dtid = input.getAttribute('data-testid').replace(/"/g, '\\"');

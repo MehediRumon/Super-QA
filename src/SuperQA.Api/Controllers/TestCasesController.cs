@@ -13,13 +13,11 @@ public class TestCasesController : ControllerBase
 {
     private readonly SuperQADbContext _context;
     private readonly IAITestGeneratorService _aiTestGenerator;
-    private readonly IPageInspectorService _pageInspectorService;
 
-    public TestCasesController(SuperQADbContext context, IAITestGeneratorService aiTestGenerator, IPageInspectorService pageInspectorService)
+    public TestCasesController(SuperQADbContext context, IAITestGeneratorService aiTestGenerator)
     {
         _context = context;
         _aiTestGenerator = aiTestGenerator;
-        _pageInspectorService = pageInspectorService;
     }
 
     [HttpGet("project/{projectId}")]
@@ -111,42 +109,12 @@ public class TestCasesController : ControllerBase
                     ErrorMessage = "Application URL is required (either provide it in the request or include a URL in the test case steps/preconditions)" 
                 });
 
-            // Inspect the actual page to get real selectors
-            string? pageStructure = null;
-            string? inspectionWarning = null;
-            try
-            {
-                Console.WriteLine($"Inspecting page at: {urlToInspect}");
-                pageStructure = await _pageInspectorService.GetPageStructureAsync(urlToInspect);
-                
-                // Check if page inspection returned an error
-                if (pageStructure != null && pageStructure.Contains("\"error\""))
-                {
-                    inspectionWarning = "⚠️ NOT getting actual elements from your page. Page inspection failed. " +
-                        "The automation script will be generated with generic/placeholder selectors instead of your actual page elements. " +
-                        "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
-                    Console.WriteLine($"WARNING: {inspectionWarning}");
-                    pageStructure = null; // Don't send error structure to AI
-                }
-                else
-                {
-                    Console.WriteLine($"Successfully inspected page and collected {(pageStructure?.Length ?? 0)} characters of element data");
-                }
-            }
-            catch (Exception ex)
-            {
-                // If page inspection fails, continue without it
-                inspectionWarning = "⚠️ NOT getting actual elements from your page. Page inspection failed. " +
-                    "The automation script will be generated with generic/placeholder selectors instead of your actual page elements. " +
-                    "For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
-                Console.WriteLine($"Page inspection failed: {ex.Message}");
-            }
-
-            // Generate the automation script
+            // Generate the automation script without page inspection
+            // (Test cases should include specific selectors/locators or use extension)
             var automationScript = await _aiTestGenerator.GenerateAutomationScriptAsync(
                 testCase,
                 request.Framework,
-                pageStructure);
+                null); // No page structure - AI will use generic selectors based on test case details
 
             // Update the test case with the generated script
             testCase.AutomationScript = automationScript;
@@ -156,8 +124,7 @@ public class TestCasesController : ControllerBase
             return Ok(new GenerateAutomationScriptResponse
             {
                 Success = true,
-                AutomationScript = automationScript,
-                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null
+                AutomationScript = automationScript
             });
         }
         catch (Exception ex)
