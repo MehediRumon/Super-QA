@@ -244,7 +244,11 @@ document.addEventListener('click', function (e) {
                 }
             }
         }
-        // Check for multiselect dropdown with hidden select element
+        // Check for OSL custom multiselect (Search & Select pattern)
+        else if (checkForOslCustomMultiselect(input)) {
+            xpath = checkForOslCustomMultiselect(input);
+        }
+        // Check for bootstrap multiselect dropdown with hidden select element
         else if (checkForMultiselectDropdown(input)) {
             xpath = checkForMultiselectDropdown(input);
         } else if (input.getAttribute('data-testid')) {
@@ -341,7 +345,37 @@ function showToast(message) {
     }, 1500);
 }
 
-// --- Helper: Multiselect dropdown detection and XPath generation ---
+// --- Helper: OSL Custom Multiselect detection (Search & Select pattern) ---
+// === SECTION: Detects osl-custom-multiselect pattern ===
+function checkForOslCustomMultiselect(input) {
+    // Check if input is inside a div with class 'osl-custom-multiselect'
+    let currentElement = input;
+    while (currentElement && currentElement !== document.body) {
+        currentElement = currentElement.parentElement;
+        if (currentElement && currentElement.classList && currentElement.classList.contains('osl-custom-multiselect')) {
+            // Found the osl-custom-multiselect container
+            // Look for the input with class 'input-search' within it
+            const searchInput = currentElement.querySelector('input.input-search');
+            if (searchInput) {
+                // Generate XPath based on the search input's attributes
+                if (searchInput.id) {
+                    return `//input[@id='${searchInput.id}']`;
+                } else if (searchInput.name) {
+                    return `//input[@name='${searchInput.name}']`;
+                } else if (searchInput.getAttribute('placeholder')) {
+                    const placeholder = searchInput.getAttribute('placeholder').replace(/"/g, '');
+                    return `//input[@placeholder='${placeholder}']`;
+                } else if (searchInput.className) {
+                    const firstClass = searchInput.className.split(' ')[0];
+                    return `//input[@class='${firstClass}']`;
+                }
+            }
+        }
+    }
+    return null;
+}
+
+// --- Helper: Bootstrap Multiselect dropdown detection and XPath generation ---
 // === SECTION: Detects custom multiselect UI bound to a hidden <select> ===
 function checkForMultiselectDropdown(input) {
     // Check if input is inside a span that contains a select element
@@ -376,7 +410,12 @@ function generateFallbackXPath(input) {
         const dtid = input.getAttribute('data-testid').replace(/"/g, '\\"');
         return `//*[@data-testid='${dtid}']`;
     }
-    // First check if this might be part of a multiselect dropdown
+    // Check if this might be part of an OSL custom multiselect (Search & Select)
+    const oslMultiselectXPath = checkForOslCustomMultiselect(input);
+    if (oslMultiselectXPath) {
+        return oslMultiselectXPath;
+    }
+    // Check if this might be part of a bootstrap multiselect dropdown
     const multiselectXPath = checkForMultiselectDropdown(input);
     if (multiselectXPath) {
         return multiselectXPath;
