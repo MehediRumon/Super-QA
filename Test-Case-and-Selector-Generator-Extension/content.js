@@ -187,7 +187,8 @@ document.addEventListener('click', function (e) {
             ['button', 'submit', 'reset', 'checkbox', 'radio'].includes(inputType)
         ) {
             label = getLabelForInput(input);
-            if (label) text = getDirectText(label);
+            // Get all text content from label, not just direct text nodes
+            if (label) text = (label.innerText || label.textContent || '').trim();
             if (!text) text = input.getAttribute('name') || input.id || e.target.innerText || e.target.value || 'Button';
             
             text = text.replace(/[:\.\,\;]+$/, '');
@@ -196,7 +197,8 @@ document.addEventListener('click', function (e) {
         } else {
             // Handle other inputs/selects
             label = getLabelForInput(input);
-            if (label) text = getDirectText(label);
+            // Get all text content from label, not just direct text nodes
+            if (label) text = (label.innerText || label.textContent || '').trim();
             if (!text) text = input.getAttribute('name') || input.id || input.getAttribute('placeholder') || '';
             text = text.replace(/[:\.\,\;]+$/, '');
             const bracketText = text.replace(/\s+/g, '').replace(/[:\.\,\;]+$/, '');
