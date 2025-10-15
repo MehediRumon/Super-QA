@@ -42,19 +42,31 @@ Generate a Playwright test in C# (NUnit) for:
 FRS: {{frsText}}
 URL: {{applicationUrl}}{{pageStructureSection}}
 
-REQUIREMENTS:
-1) Use Microsoft.Playwright and Microsoft.Playwright.NUnit with NUnit; class inherits from PageTest
-2) Follow the CRITICAL SELECTOR POLICY strictly
-3) Implement actions and assertions based on FRS
-4) Use async/await properly
-5) Return ONLY executable C# code, no markdown fences
+CRITICAL REQUIREMENTS:
+1) Generate COMPLETE, RUNNABLE C# code with NO syntax errors
+2) Use Microsoft.Playwright and Microsoft.Playwright.NUnit with NUnit; class inherits from PageTest
+3) Follow the CRITICAL SELECTOR POLICY strictly
+4) Implement ALL actions and assertions based on FRS
+5) If a step has a locator but NO test data (empty/missing value), you MUST generate appropriate test data
+   - For email fields: use "test@example.com"
+   - For username fields: use "testuser"
+   - For password fields: use "Test@123"
+   - For search/text fields: use descriptive test data based on field name
+   - For numeric fields: use appropriate numbers
+6) Use async/await properly with correct syntax
+7) Return ONLY executable C# code with proper structure, no markdown fences
+8) Include proper using statements: using Microsoft.Playwright; using Microsoft.Playwright.NUnit; using NUnit.Framework;
+9) Class must be named with valid C# identifier (only letters, digits, underscore)
+10) Test method must be named with valid C# identifier and have [Test] attribute
 
 Example selector usage:
 - Role+name: await Page.GetByRole(AriaRole.Button, new() { Name = "Login" }).ClickAsync();
-- By id: await Page.Locator("#username").FillAsync("test");
-- By data-testid: await Page.Locator("[data-testid=\"email\"]").FillAsync("a@b.com");
-- By placeholder: await Page.Locator("input[placeholder=\"Email\"]").FillAsync("a@b.com");
+- By id: await Page.Locator("#username").FillAsync("testuser");
+- By data-testid: await Page.Locator("[data-testid=\"email\"]").FillAsync("test@example.com");
+- By placeholder: await Page.Locator("input[placeholder=\"Email\"]").FillAsync("test@example.com");
 - Fallback from provided 'selector': await Page.Locator("CSS_HERE").ClickAsync();
+
+IMPORTANT: The generated code MUST compile without errors. Every FillAsync/TypeAsync must have a non-empty string value.
 """;
 
         var requestBody = new
@@ -62,11 +74,11 @@ Example selector usage:
             model = model,
             messages = new[]
             {
-                new { role = "system", content = "You are a Playwright test automation engineer. Use Page.GetByRole when role+name exists; otherwise use provided selectors. Never invent selectors." },
+                new { role = "system", content = "You are an expert Playwright test automation engineer. Generate COMPLETE, RUNNABLE C# code with NO syntax errors. Use Page.GetByRole when role+name exists; otherwise use provided selectors. Never invent selectors. Always provide test data for input fields - never leave them empty. The code must compile and run without errors." },
                 new { role = "user", content = prompt }
             },
             temperature = 0.2,
-            max_tokens = 1700
+            max_tokens = 2000
         };
 
         var json = JsonSerializer.Serialize(requestBody);

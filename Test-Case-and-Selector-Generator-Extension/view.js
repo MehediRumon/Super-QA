@@ -1,7 +1,31 @@
 // Simplified view.js: Shows merged Gherkin steps with locators
 
 function filterDuplicateStrings(arr) {
-    return Array.from(new Set(arr));
+    // Intelligent duplicate removal
+    // Two steps are considered duplicates if they have the same action and locator
+    const seen = new Map();
+    const result = [];
+    
+    for (const step of arr) {
+        // Extract the key parts: action description and locator (if present)
+        // Format: "Action on Element (xpath=...)" or "Action on Element"
+        const locatorMatch = step.match(/\((xpath=.+?|css=.+?|id=.+?)\)$/);
+        const locator = locatorMatch ? locatorMatch[1] : '';
+        
+        // Get the description part (everything before the locator)
+        const description = locator ? step.substring(0, step.lastIndexOf('(')).trim() : step.trim();
+        
+        // Create a unique key combining description and locator
+        const key = locator ? `${description}|${locator}` : description;
+        
+        // Only add if we haven't seen this combination before
+        if (!seen.has(key)) {
+            seen.set(key, true);
+            result.push(step);
+        }
+    }
+    
+    return result;
 }
 
 function getStoredData(callback) {
