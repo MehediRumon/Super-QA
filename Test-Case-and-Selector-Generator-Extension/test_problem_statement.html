@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problem Statement Test Cases</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        .hide-native-select select {
+            display: none;
+        }
+        .btn-group {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        .btn-group.open .dropdown-menu {
+            display: block;
+        }
+        .multiselect {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            width: 100%;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            min-width: 200px;
+            max-height: 400px;
+            overflow: auto;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        }
+        .dropdown-menu li {
+            list-style: none;
+            padding: 5px 10px;
+        }
+        .dropdown-menu li:hover {
+            background: #f5f5f5;
+        }
+        .osl-custom-multiselect {
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .input-div {
+            position: relative;
+        }
+        .selected-value {
+            min-height: 20px;
+            padding: 5px;
+            background: white;
+            border: 1px solid #ccc;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .list-unstyled {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .list-unstyled li {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .list-unstyled li:hover {
+            background: #e9e9e9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Problem Statement Test Cases</h1>
+    <p>Test cases using the exact HTML structures from the problem statement</p>
+
+    <!-- Test Case 1: Bootstrap Multiselect from Problem Statement -->
+    <div class="test-section">
+        <h2>Test Case 1: Bootstrap Multiselect (Problem Statement Example)</h2>
+        <p>Click on the multiselect button below</p>
+        
+        <span class="hide-native-select">
+            <select class="form-control" id="OrganizationId" multiple="multiple" name="OrganizationId">
+                <option value="1">UDVASH</option>
+                <option value="2">UNMESH</option>
+                <option value="13">ONLINE CARE</option>
+                <option value="14">UTKORSHO</option>
+                <option value="12">UTTORON</option>
+                <option value="11">Shikkha Poribar</option>
+                <option value="3">OSL</option>
+                <option value="4">Pi Labs</option>
+                <option value="5">ORELCO</option>
+                <option value="6">OWSL</option>
+                <option value="7">TSB</option>
+                <option value="8">OG</option>
+                <option value="9">OP</option>
+                <option value="10">ORP</option>
+                <option value="15">OPL</option>
+                <option value="16">OE</option>
+            </select>
+            <div class="btn-group open" style="width: 100%;">
+                <button type="button" class="multiselect dropdown-toggle btn btn-default" data-toggle="dropdown" title="Select All" style="width: 100%; overflow: hidden; text-overflow: ellipsis;">
+                    <span class="multiselect-selected-text">Select All</span> <b class="caret"></b>
+                </button>
+                <ul class="multiselect-container dropdown-menu" style="max-height: 400px; overflow: hidden auto;">
+                    <li class="multiselect-item multiselect-filter" value="0">
+                        <div class="input-group">
+                            <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
+                            <input class="form-control multiselect-search" type="text" placeholder="Search">
+                        </div>
+                    </li>
+                    <li class="multiselect-item multiselect-all">
+                        <a tabindex="0" class="multiselect-all">
+                            <label class="checkbox"><input type="checkbox" value="0"> Select all</label>
+                        </a>
+                    </li>
+                    <li class="">
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="1"> UDVASH</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="2"> UNMESH</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="13"> ONLINE CARE</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="14"> UTKORSHO</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="12"> UTTORON</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="11"> Shikkha Poribar</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="3"> OSL</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="4"> Pi Labs</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="5"> ORELCO</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="6"> OWSL</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="7"> TSB</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="8"> OG</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="9"> OP</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="10"> ORP</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="15"> OPL</label></a>
+                    </li>
+                    <li>
+                        <a tabindex="0"><label class="checkbox"><input type="checkbox" value="16"> OE</label></a>
+                    </li>
+                </ul>
+            </div>
+        </span>
+        
+        <p><strong>Expected XPath:</strong> <code>//select[@id='OrganizationId']/following-sibling::div//button</code></p>
+        <p><strong>Should work when clicking:</strong> The multiselect button</p>
+    </div>
+
+    <!-- Test Case 2: OSL Custom Multiselect from Problem Statement -->
+    <div class="test-section">
+        <h2>Test Case 2: OSL Custom Multiselect (Problem Statement Example)</h2>
+        <p>Click on the search input below</p>
+        
+        <div class="col-md-4">
+            <div class="osl-custom-multiselect">
+                <div class="input-div">
+                    <div class="selected-value"></div>
+                    <input id="TeacherIds" class="form-control input-search" autocomplete="off" placeholder="[TPIN] Name (Batch) ...">
+                    <input type="hidden" autocomplete="off" id="uuu-selected-list-data">
+                </div>
+                <ul id="multiselectOptionList" class="list-unstyled">
+                    <li>
+                        <input class="select" type="checkbox" value="4726"> <span>[4726] - Rumon (2017)</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <p><strong>Expected XPath:</strong> <code>//input[@id='TeacherIds']</code></p>
+        <p><strong>Should work when clicking:</strong> The search input field</p>
+    </div>
+
+    <script>
+        // Simple toggle for dropdown demo
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const parent = this.closest('.btn-group');
+                parent.classList.toggle('open');
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.btn-group.open').forEach(el => {
+                el.classList.remove('open');
+            });
+        });
+    </script>
+</body>
+</html>
