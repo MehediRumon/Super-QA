@@ -151,7 +151,8 @@ document.addEventListener('click', function (e) {
     // --- If a label was clicked ---
     if (e.target.tagName === 'LABEL') {
         label = e.target;
-        text = getDirectText(label);
+        // Get all text content, not just direct text nodes
+        text = (label.innerText || label.textContent || '').trim();
         const forId = label.getAttribute('for');
         input = forId ? document.getElementById(forId) : label.querySelector('input,select,textarea');
 
