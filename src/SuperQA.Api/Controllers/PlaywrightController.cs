@@ -14,7 +14,6 @@ public class PlaywrightController : ControllerBase
 {
     private readonly IOpenAIService _openAIService;
     private readonly IPlaywrightTestExecutor _playwrightTestExecutor;
-    private readonly IPageInspectorService _pageInspectorService;
     private readonly IUserSettingsService _settingsService;
     private readonly SuperQADbContext _context;
     private readonly IMemoryCache _cache;
@@ -22,14 +21,12 @@ public class PlaywrightController : ControllerBase
     public PlaywrightController(
         IOpenAIService openAIService, 
         IPlaywrightTestExecutor playwrightTestExecutor, 
-        IPageInspectorService pageInspectorService, 
         IUserSettingsService settingsService,
         SuperQADbContext context,
         IMemoryCache cache)
     {
         _openAIService = openAIService;
         _playwrightTestExecutor = playwrightTestExecutor;
-        _pageInspectorService = pageInspectorService;
         _settingsService = settingsService;
         _context = context;
         _cache = cache;
@@ -49,37 +46,19 @@ public class PlaywrightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.OpenAIApiKey))
                 return BadRequest(new PlaywrightTestGenerationResponse { Success = false, ErrorMessage = "OpenAI API key is required" });
 
-            string? pageStructure = null;
-            string? inspectionWarning = null;
-            try
-            {
-                // Pass FRS to inspector to focus on relevant elements
-                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl, request.FrsText);
-                if (pageStructure != null && pageStructure.Contains("\"error\""))
-                {
-                    inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
-                    Console.WriteLine($"WARNING: {inspectionWarning}");
-                    pageStructure = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                inspectionWarning = "⚠️ Page inspection failed. The AI will generate test scripts with generic selectors. For best results, ensure Playwright browsers are installed (run 'playwright install chromium').";
-                Console.WriteLine($"Page inspection failed: {ex.Message}");
-            }
-
+            // Generate test script without page inspection
+            // (Use extension for collecting locators instead)
             var generatedScript = await _openAIService.GeneratePlaywrightTestScriptAsync(
                 request.FrsText,
                 request.ApplicationUrl,
                 request.OpenAIApiKey,
                 request.Model,
-                pageStructure);
+                null); // No page structure - AI will use generic selectors
 
             return Ok(new PlaywrightTestGenerationResponse
             {
                 Success = true,
-                GeneratedScript = generatedScript,
-                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null
+                GeneratedScript = generatedScript
             });
         }
         catch (Exception ex)
@@ -150,24 +129,8 @@ public class PlaywrightController : ControllerBase
             // Convert extension steps to FRS text
             var frsText = GenerateFrsFromSteps(request.Steps, request.TestName);
 
-            string? pageStructure = null;
-            string? inspectionWarning = null;
-            try
-            {
-                pageStructure = await _pageInspectorService.GetPageStructureAsync(request.ApplicationUrl, frsText);
-                if (pageStructure != null && pageStructure.Contains("\"error\""))
-                {
-                    inspectionWarning = "⚠️ Page inspection failed. The AI will use the locators from the extension.";
-                    Console.WriteLine($"WARNING: {inspectionWarning}");
-                    pageStructure = GeneratePageStructureFromSteps(request.Steps);
-                }
-            }
-            catch (Exception ex)
-            {
-                inspectionWarning = "⚠️ Page inspection failed. The AI will use the locators from the extension.";
-                Console.WriteLine($"Page inspection failed: {ex.Message}");
-                pageStructure = GeneratePageStructureFromSteps(request.Steps);
-            }
+            // Use extension-provided locators instead of page inspection
+            var pageStructure = GeneratePageStructureFromSteps(request.Steps);
 
             var generatedScript = await _openAIService.GeneratePlaywrightTestScriptAsync(
                 frsText,
@@ -215,7 +178,6 @@ public class PlaywrightController : ControllerBase
             {
                 Success = true,
                 GeneratedScript = generatedScript,
-                Warnings = inspectionWarning != null ? new[] { inspectionWarning } : null,
                 TestCaseId = testCase.Id,
                 ProjectId = testsProject.Id
             });
