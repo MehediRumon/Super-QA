@@ -109,7 +109,9 @@
                     }
                     else
                     {
-                        <pre class="code-block"><code>@generatedScript</code></pre>
+                        <textarea class="form-control code-editor" 
+                                  @bind="generatedScript" 
+                                  rows="20"></textarea>
                         
                         <div class="d-grid gap-2 mt-3">
                             <button class="btn btn-success btn-lg modern-btn" @onclick="ExecuteTestScript" disabled="@isExecuting">
@@ -238,6 +240,26 @@
         font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         font-size: 13px;
         line-height: 1.5;
+    }
+
+    .code-editor {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
+        background-color: #2d2d2d;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #444;
+        resize: vertical;
+        min-height: 400px;
+        line-height: 1.5;
+    }
+
+    .code-editor:focus {
+        background-color: #2d2d2d;
+        color: #f8f8f2;
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
     }
 
     .gherkin-display {

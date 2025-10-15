@@ -59,4 +59,47 @@ public class Tests : PageTest
         // Verify that browser installation was attempted
         Assert.Contains("Installing Playwright browsers", allLogs);
     }
+
+    [Fact]
+    public async Task ExecuteTestScriptAsync_ShouldReturnBuildError_WhenScriptHasSyntaxErrors()
+    {
+        // Arrange
+        var executor = new PlaywrightTestExecutor(CreateConfiguration());
+        var testScriptWithSyntaxError = @"
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+using NUnit.Framework;
+
+namespace PlaywrightTests;
+
+[Parallelizable(ParallelScope.Self)]
+[TestFixture]
+public class Tests : PageTest
+{
+    [Test]
+    public async Task BasicTest()
+    {
+        await Page.GotoAsync(""https://www.example.com"");
+        await Expect(Page).ToHaveTitleAsync(new System.Text.RegularExpressions.Regex(""Example""));
+    // Missing closing brace here
+}";
+
+        // Act
+        var result = await executor.ExecuteTestScriptAsync(testScriptWithSyntaxError, "https://www.example.com");
+        
+        // Assert
+        Assert.NotNull(result);
+        Assert.False(result.Success);
+        Assert.Equal("Build Error", result.Status);
+        Assert.Contains("syntax errors", result.ErrorMessage);
+        Assert.Contains("failed to compile", result.ErrorMessage);
+        
+        // Verify that build output is in the response
+        Assert.NotNull(result.Output);
+        Assert.Contains("error CS", result.Output);
+        
+        // Verify that browser installation and test execution were NOT attempted
+        var allLogs = string.Join("\n", result.Logs);
+        Assert.DoesNotContain("Executing tests", allLogs);
+    }
 }
