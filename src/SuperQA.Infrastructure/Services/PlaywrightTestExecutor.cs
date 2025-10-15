@@ -70,36 +70,47 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 var buildResult = await RunCommandAsync("dotnet", "build", projectPath);
                 logs.Add(buildResult);
 
-                // Install Playwright browsers using the node CLI from the build output
-                logs.Add("Installing Playwright browsers...");
-                var installBrowsersResult = await InstallPlaywrightBrowsersAsync(projectPath);
-                logs.Add(installBrowsersResult);
-
-                // Run the tests with the runsettings file
-                logs.Add("Executing tests...");
-                var testResult = await RunCommandAsync("dotnet", $"test --settings test.runsettings --logger:\"console;verbosity=detailed\"", projectPath);
-                logs.Add(testResult);
-
-                // Determine pass/fail based on test output
-                if (testResult.Contains("Passed!") || testResult.Contains("Test Run Successful"))
-                {
-                    response.Success = true;
-                    response.Status = "Pass";
-                    response.Output = testResult;
-                }
-                else if (testResult.Contains("Failed!") || testResult.Contains("Test Run Failed"))
+                // Check if build succeeded
+                if (buildResult.Contains("Build FAILED") || buildResult.Contains("error CS"))
                 {
                     response.Success = false;
-                    response.Status = "Fail";
-                    response.Output = testResult;
-                    response.ErrorMessage = "One or more tests failed";
+                    response.Status = "Build Error";
+                    response.Output = buildResult;
+                    response.ErrorMessage = "The generated test script has syntax errors and failed to compile. Please check the generated code or try regenerating the test.";
                 }
                 else
                 {
-                    response.Success = false;
-                    response.Status = "Unknown";
-                    response.Output = testResult;
-                    response.ErrorMessage = "Could not determine test result";
+                    // Install Playwright browsers using the node CLI from the build output
+                    logs.Add("Installing Playwright browsers...");
+                    var installBrowsersResult = await InstallPlaywrightBrowsersAsync(projectPath);
+                    logs.Add(installBrowsersResult);
+
+                    // Run the tests with the runsettings file
+                    logs.Add("Executing tests...");
+                    var testResult = await RunCommandAsync("dotnet", $"test --settings test.runsettings --logger:\"console;verbosity=detailed\"", projectPath);
+                    logs.Add(testResult);
+
+                    // Determine pass/fail based on test output
+                    if (testResult.Contains("Passed!") || testResult.Contains("Test Run Successful"))
+                    {
+                        response.Success = true;
+                        response.Status = "Pass";
+                        response.Output = testResult;
+                    }
+                    else if (testResult.Contains("Failed!") || testResult.Contains("Test Run Failed"))
+                    {
+                        response.Success = false;
+                        response.Status = "Fail";
+                        response.Output = testResult;
+                        response.ErrorMessage = "One or more tests failed";
+                    }
+                    else
+                    {
+                        response.Success = false;
+                        response.Status = "Unknown";
+                        response.Output = testResult;
+                        response.ErrorMessage = "Could not determine test result";
+                    }
                 }
             }
             finally
