@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bootstrap Multiselect Label Click Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .hide-native-select select {
+            display: none;
+        }
+        .btn-group {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        .btn-group.open .dropdown-menu {
+            display: block;
+        }
+        .multiselect {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            width: 100%;
+            text-align: left;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            min-width: 100%;
+            max-height: 300px;
+            overflow: auto;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        }
+        .dropdown-menu li {
+            list-style: none;
+            padding: 5px 10px;
+        }
+        .dropdown-menu li:hover {
+            background: #f5f5f5;
+        }
+        .clickable {
+            cursor: pointer;
+            padding: 8px;
+            background: #fff3cd;
+            border: 2px dashed #ff9800;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        .clickable:hover {
+            background: #fffacd;
+        }
+        .expected {
+            background: #e8f5e9;
+            padding: 10px;
+            border-left: 4px solid #4CAF50;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .note {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Bootstrap Multiselect Label Click - Fix Verification</h1>
+    <p><strong>Purpose:</strong> Verify that clicking on checkbox labels like "UDVASH" now generates XPath correctly.</p>
+    
+    <div class="note">
+        <strong>🐛 Bug Fixed:</strong> Previously, clicking on checkbox labels in Bootstrap multiselect dropdowns would not generate any XPath. 
+        <br><br>
+        <strong>✅ Fix Applied:</strong> Changed label text extraction to use <code>innerText</code> instead of <code>getDirectText()</code>, which now captures all text including text in child elements.
+    </div>
+
+    <div class="test-section">
+        <h2>Test Case: Bootstrap Multiselect with Checkbox Labels</h2>
+        <p>Instructions:</p>
+        <ol>
+            <li>Enable the browser extension</li>
+            <li>Click on the dropdown button (should work - generates button XPath)</li>
+            <li>Then click on individual checkbox labels like "UDVASH" or "UNMESH"</li>
+            <li>Verify that XPath is now generated for each click</li>
+        </ol>
+        
+        <h3>Multiselect Dropdown (Pre-opened for Testing)</h3>
+        <span class="hide-native-select">
+            <select class="form-control" id="OrganizationId" multiple="multiple" name="OrganizationId">
+                <option value="1">UDVASH</option>
+                <option value="2">UNMESH</option>
+                <option value="13">ONLINE CARE</option>
+                <option value="14">UTKORSHO</option>
+                <option value="12">UTTORON</option>
+            </select>
+            <div class="btn-group open" style="width: 100%;">
+                <button type="button" class="multiselect dropdown-toggle btn btn-default" data-toggle="dropdown">
+                    <span class="multiselect-selected-text">✅ 1. Click here first - Dropdown Button</span>
+                </button>
+                <ul class="multiselect-container dropdown-menu" style="max-height: 400px; overflow: auto;">
+                    <li class="multiselect-item multiselect-all">
+                        <a tabindex="0" class="multiselect-all clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="0"> ✅ 2. Click here - "Select all" label
+                            </label>
+                        </a>
+                    </li>
+                    <li class="">
+                        <a tabindex="0" class="clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="1"> ✅ 3. Click here - "UDVASH" label
+                            </label>
+                        </a>
+                    </li>
+                    <li>
+                        <a tabindex="0" class="clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="2"> ✅ 4. Click here - "UNMESH" label
+                            </label>
+                        </a>
+                    </li>
+                    <li>
+                        <a tabindex="0" class="clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="13"> ✅ 5. Click here - "ONLINE CARE" label
+                            </label>
+                        </a>
+                    </li>
+                    <li>
+                        <a tabindex="0" class="clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="14"> ✅ 6. Click here - "UTKORSHO" label
+                            </label>
+                        </a>
+                    </li>
+                    <li>
+                        <a tabindex="0" class="clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="12"> ✅ 7. Click here - "UTTORON" label
+                            </label>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </span>
+        
+        <div class="expected">
+            <strong>Expected Behavior:</strong><br>
+            • Clicking dropdown button → Generates: //select[@id='OrganizationId']/following-sibling::div//button<br>
+            • Clicking any checkbox label → Generates: //select[@id='OrganizationId']/following-sibling::div//button<br>
+            • Toast notification should appear for each click<br>
+            • Element should highlight with blue outline
+        </div>
+        
+        <div class="note">
+            <strong>ℹ️ Why Same XPath?</strong> For test automation, the primary interaction point is the multiselect button. Clicking individual checkboxes is part of the dropdown interaction, so they all generate the same XPath pointing to the button. This is correct behavior.
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Case: Label with Text in Child Element</h2>
+        <p>This tests labels where text is wrapped in a child element (like <code>&lt;span&gt;</code>)</p>
+        
+        <span class="hide-native-select">
+            <select class="form-control" id="TestSelect" multiple="multiple">
+                <option value="1">Option 1</option>
+            </select>
+            <div class="btn-group open">
+                <button type="button" class="multiselect">Test Multiselect</button>
+                <ul class="multiselect-container dropdown-menu">
+                    <li>
+                        <a tabindex="0" class="clickable">
+                            <label class="checkbox">
+                                <input type="checkbox" value="1">
+                                <span>✅ Click here - Text in span element</span>
+                            </label>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </span>
+        
+        <div class="expected">
+            <strong>Expected:</strong> Clicking the label should generate XPath (previously this would fail)
+        </div>
+    </div>
+
+    <div class="test-section" style="background: #fff; border-color: #2196F3;">
+        <h2 style="color: #2196F3;">✅ Success Criteria</h2>
+        <ul style="line-height: 1.8;">
+            <li>✓ Clicking dropdown button generates XPath</li>
+            <li>✓ Clicking "Select all" label generates XPath</li>
+            <li>✓ Clicking "UDVASH" label generates XPath (previously failed)</li>
+            <li>✓ Clicking "UNMESH" label generates XPath (previously failed)</li>
+            <li>✓ Clicking other checkbox labels generates XPath</li>
+            <li>✓ Toast notifications appear for each click</li>
+            <li>✓ Elements highlight when clicked</li>
+        </ul>
+    </div>
+
+    <script>
+        // Simple toggle for dropdown demo (not needed for test since pre-opened)
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const parent = this.closest('.btn-group');
+                parent.classList.toggle('open');
+            });
+        });
+
+        // Visual feedback for clicks
+        document.querySelectorAll('.clickable').forEach(el => {
+            el.addEventListener('click', function(e) {
+                console.log('Clicked on:', e.target);
+                this.style.background = '#4CAF50';
+                this.style.color = 'white';
+                setTimeout(() => {
+                    this.style.background = '';
+                    this.style.color = '';
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>
