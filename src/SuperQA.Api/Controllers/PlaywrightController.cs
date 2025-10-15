@@ -263,6 +263,11 @@ public class PlaywrightController : ControllerBase
             {
                 frs += $"   Value: {step.Value}\n";
             }
+            else if (step.Action?.ToLower() == "fill" || step.Action?.ToLower() == "type")
+            {
+                // Indicate that AI should generate test data for fill/type actions without values
+                frs += $"   Value: [AI: Generate appropriate test data based on field name/type]\n";
+            }
             frs += "\n";
         }
         return frs;

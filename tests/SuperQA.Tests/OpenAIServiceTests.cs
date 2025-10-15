@@ -191,4 +191,101 @@ public class OpenAIServiceTests
         Assert.DoesNotContain("IBrowser", result); // IBrowser is from the old API
         Assert.DoesNotContain("IPage", result); // IPage is from the old API
     }
+
+    [Fact]
+    public async Task GeneratePlaywrightTestScriptAsync_WithPageStructure_SendsEnhancedPrompt()
+    {
+        // Arrange
+        var capturedRequest = string.Empty;
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var responseContent = @"{
+            ""choices"": [
+                {
+                    ""message"": {
+                        ""content"": ""using Microsoft.Playwright;\nusing NUnit.Framework;\n\npublic class Test : PageTest\n{\n    [Test]\n    public async Task TestMethod()\n    {\n        await Page.GotoAsync(\""https://example.com\"");\n        await Page.Locator(\""#username\"").FillAsync(\""testuser\"");\n    }\n}""
+                    }
+                }
+            ]
+        }";
+
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+            {
+                capturedRequest = req.Content!.ReadAsStringAsync().Result;
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent(responseContent)
+                };
+            });
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+        var service = new OpenAIService(httpClient);
+
+        // Act
+        var result = await service.GeneratePlaywrightTestScriptAsync(
+            "Fill username field",
+            "https://example.com",
+            "test-api-key",
+            "gpt-4o-mini",
+            "[{\"type\":\"fill\",\"selector\":\"#username\"}]");
+
+        // Assert - verify the enhanced prompt is used
+        Assert.Contains("COMPLETE, RUNNABLE C# code", capturedRequest);
+        Assert.Contains("NO syntax errors", capturedRequest);
+        Assert.Contains("generate appropriate test data", capturedRequest);
+        Assert.Contains("test@example.com", capturedRequest);
+        Assert.Contains("testuser", capturedRequest);
+    }
+
+    [Fact]
+    public async Task GeneratePlaywrightTestScriptAsync_IncreasedMaxTokens_AllowsLongerResponses()
+    {
+        // Arrange
+        var capturedRequest = string.Empty;
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var responseContent = @"{
+            ""choices"": [
+                {
+                    ""message"": {
+                        ""content"": ""test script""
+                    }
+                }
+            ]
+        }";
+
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+            {
+                capturedRequest = req.Content!.ReadAsStringAsync().Result;
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent(responseContent)
+                };
+            });
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+        var service = new OpenAIService(httpClient);
+
+        // Act
+        await service.GeneratePlaywrightTestScriptAsync(
+            "test frs",
+            "https://example.com",
+            "test-api-key",
+            "gpt-4o-mini");
+
+        // Assert - verify max_tokens is increased to 2000
+        Assert.Contains("\"max_tokens\":2000", capturedRequest.Replace(" ", ""));
+    }
 }

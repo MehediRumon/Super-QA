@@ -23,6 +23,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SuperQA.Infrastructure\SuperQA.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\SuperQA.Core\SuperQA.Core.csproj" />
+    <ProjectReference Include="..\..\src\SuperQA.Api\SuperQA.Api.csproj" />
+    <ProjectReference Include="..\..\src\SuperQA.Shared\SuperQA.Shared.csproj" />
   </ItemGroup>
 
 </Project>
