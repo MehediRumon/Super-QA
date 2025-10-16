@@ -167,7 +167,7 @@ public class SelfHealingServiceTests
     }
 
     [Fact]
-    public async Task SuggestUpdatedLocatorAsync_WithClassSelector_ReturnsSameLocator()
+    public async Task SuggestUpdatedLocatorAsync_WithClassSelector_ReturnsPartialMatchLocator()
     {
         // Arrange
         var context = CreateInMemoryContext();
@@ -180,7 +180,8 @@ public class SelfHealingServiceTests
 
         // Assert
         Assert.NotNull(result);
-        // Should return the same locator as fallback for class selectors
-        Assert.Equal(failedLocator, result);
+        // Should return a more stable partial match locator for class selectors
+        Assert.Contains("btn-primary", result);
+        Assert.Contains("class*=", result);
     }
 }
