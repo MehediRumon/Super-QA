@@ -10,13 +10,16 @@ public class TestExecutionsController : ControllerBase
 {
     private readonly ITestExecutionService _testExecutionService;
     private readonly IBackgroundTestRunner _backgroundTestRunner;
+    private readonly IAITestHealingService _healingService;
 
     public TestExecutionsController(
         ITestExecutionService testExecutionService,
-        IBackgroundTestRunner backgroundTestRunner)
+        IBackgroundTestRunner backgroundTestRunner,
+        IAITestHealingService healingService)
     {
         _testExecutionService = testExecutionService;
         _backgroundTestRunner = backgroundTestRunner;
+        _healingService = healingService;
     }
 
     [HttpPost("execute")]
@@ -72,5 +75,40 @@ public class TestExecutionsController : ControllerBase
     {
         var status = await _backgroundTestRunner.GetTestRunStatusAsync(projectId);
         return Ok(new { status });
+    }
+
+    [HttpPost("heal")]
+    public async Task<ActionResult<HealTestResponse>> HealTest([FromBody] HealTestRequest request)
+    {
+        try
+        {
+            var healedScript = await _healingService.HealTestScriptAsync(
+                request.TestCaseId,
+                request.ExecutionId,
+                request.ApiKey,
+                request.Model);
+
+            return Ok(new HealTestResponse
+            {
+                HealedScript = healedScript,
+                Message = "Test script healed successfully. Review and update your test case with the improved script."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, $"OpenAI API error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error healing test: {ex.Message}");
+        }
     }
 }
