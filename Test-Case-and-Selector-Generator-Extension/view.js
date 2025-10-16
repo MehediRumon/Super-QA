@@ -246,7 +246,7 @@ if (sendToSuperQABtn) {
             
             try {
                 // Store data on the server and get a data ID
-                const response = await fetch('http://localhost:5000/api/playwright/store-extension-data', {
+                const response = await fetch('http://localhost:7000/api/playwright/store-extension-data', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

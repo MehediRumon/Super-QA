@@ -1,7 +1,8 @@
 # Quick Test Guide - Extension Integration Features
 
 ## Prerequisites
-- SuperQA.Api running on http://localhost:5000
+- SuperQA.Api running on http://localhost:7000 (or https://localhost:7001)
+- SuperQA.Client running on http://localhost:5000 (for UI)
 - Browser with extension installed
 
 ## Test 1: Port Configuration ✅
@@ -13,8 +14,8 @@
 4. Click "Send to SuperQA"
 
 ### Expected Result:
-- Extension sends POST to `http://localhost:5000/api/playwright/store-extension-data`
-- Browser opens new tab to `http://localhost:5000/extension-test-review?dataId={id}`
+- Extension sends POST to `http://localhost:7000/api/playwright/store-extension-data` (API endpoint)
+- Browser opens new tab to `http://localhost:5000/extension-test-review?dataId={id}` (UI endpoint)
 - Data loads successfully in ExtensionTestReview page
 
 ## Test 2: Database Persistence ✅
@@ -72,7 +73,7 @@
 
 ### Test Store Endpoint:
 ```bash
-curl -X POST http://localhost:5000/api/playwright/store-extension-data \
+curl -X POST http://localhost:7000/api/playwright/store-extension-data \
   -H "Content-Type: application/json" \
   -d '{
     "testName": "API Test",
@@ -92,21 +93,21 @@ Expected: `{ "dataId": "2", "message": "Data stored successfully" }`
 
 ### Test Get Endpoint:
 ```bash
-curl http://localhost:5000/api/playwright/get-extension-data/2
+curl http://localhost:7000/api/playwright/get-extension-data/2
 ```
 
 Expected: Returns the extension data
 
 ### Test List Endpoint:
 ```bash
-curl http://localhost:5000/api/playwright/list-extension-data
+curl http://localhost:7000/api/playwright/list-extension-data
 ```
 
 Expected: Returns array of all extension data
 
 ### Test Update Endpoint:
 ```bash
-curl -X PUT http://localhost:5000/api/playwright/update-extension-data/2 \
+curl -X PUT http://localhost:7000/api/playwright/update-extension-data/2 \
   -H "Content-Type: application/json" \
   -d '{
     "testName": "Updated API Test",
@@ -126,14 +127,14 @@ Expected: `{ "message": "Data updated successfully", "dataId": "2" }`
 
 ### Test Delete Endpoint:
 ```bash
-curl -X DELETE http://localhost:5000/api/playwright/delete-extension-data/2
+curl -X DELETE http://localhost:7000/api/playwright/delete-extension-data/2
 ```
 
 Expected: `{ "message": "Data deleted successfully" }`
 
 ## Verification Checklist
 
-- [ ] Extension uses correct port (5000, not 7001)
+- [ ] Extension uses correct ports (API on 7000, UI on 5000)
 - [ ] Data persists across server restarts
 - [ ] Edit functionality saves changes
 - [ ] Delete functionality removes data
