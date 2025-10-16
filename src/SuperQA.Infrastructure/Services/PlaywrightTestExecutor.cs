@@ -15,7 +15,7 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
         _configuration = configuration;
     }
 
-    public async Task<PlaywrightTestExecutionResponse> ExecuteTestScriptAsync(string testScript, string applicationUrl)
+    public async Task<PlaywrightTestExecutionResponse> ExecuteTestScriptAsync(string testScript, string applicationUrl, bool debugMode = false, int? slowMotion = null)
     {
         var response = new PlaywrightTestExecutionResponse();
         var logs = new List<string>();
@@ -27,6 +27,10 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
             Directory.CreateDirectory(tempDir);
 
             logs.Add($"Created temporary directory: {tempDir}");
+            if (debugMode)
+            {
+                logs.Add("DEBUG MODE: Execution will run in headed mode with slow motion");
+            }
 
             try
             {
@@ -43,8 +47,8 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 logs.Add(await RunCommandAsync("dotnet", "add package Microsoft.Playwright", projectPath));
                 logs.Add(await RunCommandAsync("dotnet", "add package Microsoft.Playwright.NUnit", projectPath));
 
-                // Get headless configuration
-                var headless = _configuration.GetValue<bool>("Playwright:Headless", true);
+                // Get headless configuration - override with debug mode
+                var headless = debugMode ? false : _configuration.GetValue<bool>("Playwright:Headless", true);
 
                 // Ensure required usings exist in script
                 var builder = new StringBuilder();
@@ -52,6 +56,14 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
                 if (!testScript.Contains("using Microsoft.Playwright.NUnit;")) builder.AppendLine("using Microsoft.Playwright.NUnit;");
                 if (!testScript.Contains("using NUnit.Framework;")) builder.AppendLine("using NUnit.Framework;");
                 if (builder.Length > 0) builder.AppendLine();
+                
+                // Inject slow motion if specified in debug mode
+                if (debugMode && slowMotion.HasValue)
+                {
+                    testScript = InjectSlowMotion(testScript, slowMotion.Value);
+                    logs.Add($"Injected slow motion: {slowMotion.Value}ms");
+                }
+                
                 builder.Append(testScript);
                 testScript = builder.ToString();
                 
@@ -249,4 +261,33 @@ public class PlaywrightTestExecutor : IPlaywrightTestExecutor
 
         return result;
     }
+
+    private string InjectSlowMotion(string testScript, int slowMotionMs)
+    {
+        // Look for browser launch options and inject SlowMo
+        // Pattern: await Playwright.Chromium.LaunchAsync(new() { Headless = false });
+        
+        // Try to find existing launch options
+        if (testScript.Contains("LaunchAsync(new()"))
+        {
+            // Add SlowMo to existing options
+            testScript = System.Text.RegularExpressions.Regex.Replace(
+                testScript,
+                @"LaunchAsync\(new\(\)\s*{",
+                $"LaunchAsync(new() {{ SlowMo = {slowMotionMs},",
+                System.Text.RegularExpressions.RegexOptions.Multiline
+            );
+        }
+        else if (testScript.Contains("LaunchAsync()"))
+        {
+            // Replace empty launch with options
+            testScript = testScript.Replace(
+                "LaunchAsync()",
+                $"LaunchAsync(new() {{ SlowMo = {slowMotionMs} }})"
+            );
+        }
+        
+        return testScript;
+    }
 }
+

@@ -246,7 +246,7 @@ if (sendToSuperQABtn) {
             
             try {
                 // Store data on the server and get a data ID
-                const response = await fetch('https://localhost:7001/api/playwright/store-extension-data', {
+                const response = await fetch('http://localhost:5000/api/playwright/store-extension-data', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -262,7 +262,7 @@ if (sendToSuperQABtn) {
                     sendStatus.style.color = '#90EE90';
                     
                     // Open SuperQA with the data ID in the URL
-                    const superQAUrl = `https://localhost:7001/extension-test-review?dataId=${dataId}`;
+                    const superQAUrl = `http://localhost:5000/extension-test-review?dataId=${dataId}`;
                     window.open(superQAUrl, '_blank');
                     
                     // Reset button after a delay

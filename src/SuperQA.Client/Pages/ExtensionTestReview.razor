@@ -64,6 +64,34 @@
                                 <span>Generate Test Script</span>
                             }
                         </button>
+
+                        @if (dataId.HasValue)
+                        {
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-success" @onclick="SaveChanges" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-save me-1"></i>
+                                    }
+                                    <span>Save Changes</span>
+                                </button>
+                                <button class="btn btn-outline-danger" @onclick="DeleteData" disabled="@isDeleting">
+                                    @if (isDeleting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-trash me-1"></i>
+                                    }
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        }
                     </div>
 
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -112,6 +140,23 @@
                         <textarea class="form-control code-editor" 
                                   @bind="generatedScript" 
                                   rows="20"></textarea>
+                        
+                        <div class="mt-3">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="debugModeSwitch" @bind="debugMode">
+                                <label class="form-check-label" for="debugModeSwitch">
+                                    <i class="bi bi-bug me-1"></i>Debug Mode (Headed browser with slow motion)
+                                </label>
+                            </div>
+                            @if (debugMode)
+                            {
+                                <div class="mb-2">
+                                    <label class="form-label">Slow Motion (ms)</label>
+                                    <input type="number" class="form-control" @bind="slowMotion" min="100" max="5000" step="100" />
+                                    <small class="text-muted">Delay between actions in milliseconds (100-5000ms)</small>
+                                </div>
+                            }
+                        </div>
                         
                         <div class="d-grid gap-2 mt-3">
                             <button class="btn btn-success btn-lg modern-btn" @onclick="ExecuteTestScript" disabled="@isExecuting">
@@ -289,12 +334,17 @@
     private string applicationUrl = string.Empty;
     private string gherkinStepsText = string.Empty;
     private int stepsCount = 0;
+    private int? dataId = null;
     private List<BrowserExtensionStep> steps = new();
     private string generatedScript = string.Empty;
     private string errorMessage = string.Empty;
     private string[]? warnings = null;
     private bool isGenerating = false;
     private bool isExecuting = false;
+    private bool isSaving = false;
+    private bool isDeleting = false;
+    private bool debugMode = false;
+    private int slowMotion = 500;
     private PlaywrightTestExecutionResponse? executionResult = null;
 
     protected override async Task OnInitializedAsync()
@@ -312,16 +362,18 @@
             var query = uri.Query;
             
             // Simple query string parsing
-            string? dataId = null;
+            string? dataIdStr = null;
             if (query.Contains("dataId="))
             {
                 var start = query.IndexOf("dataId=") + 7;
                 var end = query.IndexOf('&', start);
-                dataId = end == -1 ? query.Substring(start) : query.Substring(start, end - start);
+                dataIdStr = end == -1 ? query.Substring(start) : query.Substring(start, end - start);
             }
             
-            if (!string.IsNullOrEmpty(dataId))
+            if (!string.IsNullOrEmpty(dataIdStr) && int.TryParse(dataIdStr, out int parsedId))
             {
+                dataId = parsedId;
+                
                 // Fetch data from API
                 var response = await Http.GetFromJsonAsync<GenerateFromExtensionRequest>($"/api/playwright/get-extension-data/{dataId}");
                 if (response != null)
@@ -334,7 +386,7 @@
                 }
                 else
                 {
-                    errorMessage = "Failed to load extension data. The link may have expired.";
+                    errorMessage = "Failed to load extension data.";
                 }
             }
             else
@@ -345,7 +397,7 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading extension data: {ex.Message}");
-            errorMessage = "Failed to load extension data. The link may have expired or the data is no longer available.";
+            errorMessage = "Failed to load extension data. The data may no longer be available.";
         }
     }
 
@@ -410,27 +462,34 @@
                 return;
             }
 
-            // Prepare FRS text with test name
-            var frsText = $"Test Name: {testName}\n\n{gherkinStepsText}";
+            // Parse the steps from the text (in case they were edited)
+            var parsedSteps = ParseGherkinStepsFromText(gherkinStepsText);
 
-            var request = new PlaywrightTestGenerationRequest
+            var request = new GenerateFromExtensionRequest
             {
-                FrsText = frsText,
+                TestName = testName,
                 ApplicationUrl = applicationUrl,
+                Steps = parsedSteps,
                 OpenAIApiKey = settings.OpenAIApiKey,
                 Model = settings.SelectedModel
             };
 
-            var response = await PlaywrightService.GenerateTestScriptAsync(request);
+            // Call the API with extensionDataId as query parameter
+            var url = dataId.HasValue 
+                ? $"/api/playwright/generate-from-extension?extensionDataId={dataId}" 
+                : "/api/playwright/generate-from-extension";
+            
+            var response = await Http.PostAsJsonAsync(url, request);
+            var result = await response.Content.ReadFromJsonAsync<PlaywrightTestGenerationResponse>();
 
-            if (response.Success)
+            if (result != null && result.Success)
             {
-                generatedScript = response.GeneratedScript;
-                warnings = response.Warnings;
+                generatedScript = result.GeneratedScript;
+                warnings = result.Warnings;
             }
             else
             {
-                errorMessage = response.ErrorMessage ?? "Failed to generate test script";
+                errorMessage = result?.ErrorMessage ?? "Failed to generate test script";
             }
         }
         catch (Exception ex)
@@ -454,10 +513,13 @@
             var request = new PlaywrightTestExecutionRequest
             {
                 TestScript = generatedScript,
-                ApplicationUrl = applicationUrl
+                ApplicationUrl = applicationUrl,
+                DebugMode = debugMode,
+                SlowMotion = debugMode ? slowMotion : null
             };
 
-            executionResult = await PlaywrightService.ExecuteTestScriptAsync(request);
+            var response = await Http.PostAsJsonAsync("/api/playwright/execute", request);
+            executionResult = await response.Content.ReadFromJsonAsync<PlaywrightTestExecutionResponse>();
         }
         catch (Exception ex)
         {
@@ -479,5 +541,140 @@
         {
             // Fallback or error handling
         }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (!dataId.HasValue)
+            return;
+
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Parse the edited Gherkin steps
+            var editedSteps = ParseGherkinStepsFromText(gherkinStepsText);
+
+            var request = new GenerateFromExtensionRequest
+            {
+                TestName = testName,
+                ApplicationUrl = applicationUrl,
+                Steps = editedSteps
+            };
+
+            var response = await Http.PutAsJsonAsync($"/api/playwright/update-extension-data/{dataId}", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                steps = editedSteps;
+                // Show success message
+                await JSRuntime.InvokeVoidAsync("alert", "Changes saved successfully!");
+            }
+            else
+            {
+                errorMessage = "Failed to save changes. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving changes: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteData()
+    {
+        if (!dataId.HasValue)
+            return;
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this test data?");
+        if (!confirmed)
+            return;
+
+        isDeleting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"/api/playwright/delete-extension-data/{dataId}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                // Redirect to home or test list page
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Failed to delete data. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting data: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private List<BrowserExtensionStep> ParseGherkinStepsFromText(string text)
+    {
+        var parsedSteps = new List<BrowserExtensionStep>();
+        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        BrowserExtensionStep? currentStep = null;
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            
+            if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("Browser Extension"))
+                continue;
+            
+            // Check if it's a step number (e.g., "1. Click on button")
+            if (System.Text.RegularExpressions.Regex.IsMatch(trimmedLine, @"^\d+\."))
+            {
+                // Save previous step if exists
+                if (currentStep != null)
+                {
+                    parsedSteps.Add(currentStep);
+                }
+                
+                // Start new step
+                currentStep = new BrowserExtensionStep
+                {
+                    Description = System.Text.RegularExpressions.Regex.Replace(trimmedLine, @"^\d+\.\s*", "")
+                };
+            }
+            else if (currentStep != null)
+            {
+                // Parse action, locator, or value
+                if (trimmedLine.StartsWith("Action:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentStep.Action = trimmedLine.Substring(7).Trim();
+                }
+                else if (trimmedLine.StartsWith("Locator:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentStep.Locator = trimmedLine.Substring(8).Trim();
+                }
+                else if (trimmedLine.StartsWith("Value:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentStep.Value = trimmedLine.Substring(6).Trim();
+                }
+            }
+        }
+        
+        // Add last step
+        if (currentStep != null)
+        {
+            parsedSteps.Add(currentStep);
+        }
+        
+        return parsedSteps;
     }
 }
