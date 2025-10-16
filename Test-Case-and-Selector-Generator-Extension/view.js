@@ -277,7 +277,15 @@ if (sendToSuperQABtn) {
                 }
             } catch (error) {
                 console.error('Error opening SuperQA:', error);
-                sendStatus.textContent = `❌ Error: ${error.message}`;
+                
+                // Check if the error is a connection refused error
+                if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+                    sendStatus.innerHTML = '❌ Cannot connect to SuperQA API server.<br>' +
+                                          'Please ensure the API is running on port 7000.<br>' +
+                                          '<small>Run: <code>cd src/SuperQA.Api && dotnet run</code></small>';
+                } else {
+                    sendStatus.textContent = `❌ Error: ${error.message}`;
+                }
                 sendStatus.style.color = '#ffcccb';
             } finally {
                 sendToSuperQABtn.disabled = false;
