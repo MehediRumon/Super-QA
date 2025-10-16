@@ -215,8 +215,33 @@ public class PlaywrightController : ControllerBase
     {
         try
         {
+            if (request == null)
+            {
+                return BadRequest(new { error = "Request body is required" });
+            }
+
+            if (request.Steps == null || !request.Steps.Any())
+            {
+                return BadRequest(new { 
+                    error = "No test steps provided", 
+                    message = "At least one test step is required. Please record some steps using the browser extension before sending to SuperQA."
+                });
+            }
+
             // Serialize steps to JSON
-            var stepsJson = System.Text.Json.JsonSerializer.Serialize(request.Steps);
+            string stepsJson;
+            try
+            {
+                stepsJson = System.Text.Json.JsonSerializer.Serialize(request.Steps);
+            }
+            catch (System.Text.Json.JsonException jsonEx)
+            {
+                return BadRequest(new { 
+                    error = "Failed to serialize test steps", 
+                    message = "The test steps data is invalid.",
+                    details = jsonEx.Message
+                });
+            }
             
             // Create new ExtensionTestData entity
             var extensionData = new ExtensionTestData
@@ -231,11 +256,28 @@ public class PlaywrightController : ControllerBase
             _context.ExtensionTestData.Add(extensionData);
             await _context.SaveChangesAsync();
             
-            return Ok(new { dataId = extensionData.Id.ToString(), message = "Data stored successfully" });
+            return Ok(new { 
+                dataId = extensionData.Id.ToString(), 
+                message = "Data stored successfully",
+                testName = extensionData.TestName,
+                stepCount = request.Steps.Count
+            });
+        }
+        catch (DbUpdateException dbEx)
+        {
+            return StatusCode(500, new { 
+                error = "Database error", 
+                message = "Failed to save the test data to the database. Please ensure the database is accessible and try again.",
+                details = dbEx.Message
+            });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = $"Error storing data: {ex.Message}" });
+            return StatusCode(500, new { 
+                error = "Internal server error", 
+                message = "An unexpected error occurred while storing the extension data.",
+                details = ex.Message
+            });
         }
     }
 
@@ -244,9 +286,14 @@ public class PlaywrightController : ControllerBase
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(dataId))
+            {
+                return BadRequest(new { error = "Data ID is required" });
+            }
+
             if (!int.TryParse(dataId, out int id))
             {
-                return BadRequest(new { error = "Invalid data ID" });
+                return BadRequest(new { error = $"Invalid data ID format: '{dataId}'. The ID must be a valid number." });
             }
             
             var extensionData = await _context.ExtensionTestData
@@ -254,11 +301,27 @@ public class PlaywrightController : ControllerBase
             
             if (extensionData == null)
             {
-                return NotFound(new { error = "Data not found" });
+                return NotFound(new { 
+                    error = "Extension data not found", 
+                    message = "The requested test data does not exist or may have been deleted. Please record your test steps again using the browser extension.",
+                    dataId = dataId
+                });
             }
             
             // Deserialize steps from JSON
-            var steps = System.Text.Json.JsonSerializer.Deserialize<List<BrowserExtensionStep>>(extensionData.StepsJson);
+            List<BrowserExtensionStep>? steps = null;
+            try
+            {
+                steps = System.Text.Json.JsonSerializer.Deserialize<List<BrowserExtensionStep>>(extensionData.StepsJson);
+            }
+            catch (System.Text.Json.JsonException jsonEx)
+            {
+                return StatusCode(500, new { 
+                    error = "Failed to deserialize test steps", 
+                    message = "The stored test data is corrupted. Please record your test steps again.",
+                    details = jsonEx.Message
+                });
+            }
             
             return Ok(new GenerateFromExtensionRequest
             {
@@ -269,7 +332,11 @@ public class PlaywrightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = $"Error retrieving data: {ex.Message}" });
+            return StatusCode(500, new { 
+                error = "Internal server error", 
+                message = "An unexpected error occurred while retrieving the extension data. Please try again or contact support if the issue persists.",
+                details = ex.Message 
+            });
         }
     }
 
@@ -278,9 +345,17 @@ public class PlaywrightController : ControllerBase
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(dataId))
+            {
+                return BadRequest(new { error = "Data ID is required" });
+            }
+
             if (!int.TryParse(dataId, out int id))
             {
-                return BadRequest(new { error = "Invalid data ID" });
+                return BadRequest(new { 
+                    error = "Invalid data ID format", 
+                    message = $"The ID '{dataId}' is not a valid number."
+                });
             }
             
             var extensionData = await _context.ExtensionTestData
@@ -288,22 +363,54 @@ public class PlaywrightController : ControllerBase
             
             if (extensionData == null)
             {
-                return NotFound(new { error = "Data not found" });
+                return NotFound(new { 
+                    error = "Extension data not found", 
+                    message = "The test data you're trying to update does not exist or may have been deleted.",
+                    dataId = dataId
+                });
             }
             
             // Update fields
             extensionData.TestName = request.TestName ?? extensionData.TestName;
             extensionData.ApplicationUrl = request.ApplicationUrl ?? extensionData.ApplicationUrl;
-            extensionData.StepsJson = System.Text.Json.JsonSerializer.Serialize(request.Steps);
+            
+            try
+            {
+                extensionData.StepsJson = System.Text.Json.JsonSerializer.Serialize(request.Steps);
+            }
+            catch (System.Text.Json.JsonException jsonEx)
+            {
+                return BadRequest(new { 
+                    error = "Failed to serialize test steps", 
+                    message = "The test steps data is invalid.",
+                    details = jsonEx.Message
+                });
+            }
+            
             extensionData.UpdatedAt = DateTime.UtcNow;
             
             await _context.SaveChangesAsync();
             
-            return Ok(new { message = "Data updated successfully", dataId = extensionData.Id.ToString() });
+            return Ok(new { 
+                message = "Data updated successfully", 
+                dataId = extensionData.Id.ToString() 
+            });
+        }
+        catch (DbUpdateException dbEx)
+        {
+            return StatusCode(500, new { 
+                error = "Database error", 
+                message = "Failed to save the updated data to the database. Please try again.",
+                details = dbEx.Message
+            });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = $"Error updating data: {ex.Message}" });
+            return StatusCode(500, new { 
+                error = "Internal server error", 
+                message = "An unexpected error occurred while updating the extension data.",
+                details = ex.Message
+            });
         }
     }
 
@@ -312,9 +419,17 @@ public class PlaywrightController : ControllerBase
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(dataId))
+            {
+                return BadRequest(new { error = "Data ID is required" });
+            }
+
             if (!int.TryParse(dataId, out int id))
             {
-                return BadRequest(new { error = "Invalid data ID" });
+                return BadRequest(new { 
+                    error = "Invalid data ID format", 
+                    message = $"The ID '{dataId}' is not a valid number."
+                });
             }
             
             var extensionData = await _context.ExtensionTestData
@@ -322,17 +437,36 @@ public class PlaywrightController : ControllerBase
             
             if (extensionData == null)
             {
-                return NotFound(new { error = "Data not found" });
+                return NotFound(new { 
+                    error = "Extension data not found", 
+                    message = "The test data you're trying to delete does not exist or has already been deleted.",
+                    dataId = dataId
+                });
             }
             
             _context.ExtensionTestData.Remove(extensionData);
             await _context.SaveChangesAsync();
             
-            return Ok(new { message = "Data deleted successfully" });
+            return Ok(new { 
+                message = "Data deleted successfully",
+                dataId = dataId
+            });
+        }
+        catch (DbUpdateException dbEx)
+        {
+            return StatusCode(500, new { 
+                error = "Database error", 
+                message = "Failed to delete the data from the database. Please try again.",
+                details = dbEx.Message
+            });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = $"Error deleting data: {ex.Message}" });
+            return StatusCode(500, new { 
+                error = "Internal server error", 
+                message = "An unexpected error occurred while deleting the extension data.",
+                details = ex.Message
+            });
         }
     }
 
