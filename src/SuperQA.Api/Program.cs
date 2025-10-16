@@ -53,6 +53,7 @@ builder.Services.AddSingleton<IBackgroundTestRunner, BackgroundTestRunnerService
 builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
 builder.Services.AddScoped<IPlaywrightTestExecutor, PlaywrightTestExecutor>();
 builder.Services.AddScoped<IUserSettingsService, UserSettingsService>();
+builder.Services.AddHttpClient<IAITestHealingService, AITestHealingService>();
 
 var app = builder.Build();
 

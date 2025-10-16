@@ -65,9 +65,11 @@ SuperQA/
 - ✅ **Test script execution**: Execute generated Playwright scripts and view results
 - ✅ **Test Case Automation Script Generation**: Generate Playwright automation scripts from test cases with actual page element inspection
 - ✅ **Saved Test Scripts Management UI**: View, edit, execute, and delete AI-generated test scripts through a modern UI
+- ✅ **AI Test Healing**: Intelligent self-healing for failed tests with AI-powered script repair
 
 ### Phase 3: AI Analyzer (🔄 Planned)
 
+- ✅ **AI Test Healing**: Automatically fix failed tests with intelligent script repair
 - 🔄 Log analyzer with AI
 - 🔄 Automated bug report generation
 - 🔄 Root cause analysis
@@ -296,6 +298,24 @@ The Saved Test Scripts feature provides a comprehensive UI for managing your AI-
 
 **📖 See [SAVED_TEST_SCRIPTS_FEATURE.md](SAVED_TEST_SCRIPTS_FEATURE.md) for detailed documentation**
 
+## 🔧 AI Test Healing
+
+When a test fails, you can use the AI Test Healing feature to automatically analyze and fix the issue:
+
+1. **View Failed Test**: Navigate to Test Executions and identify failed tests
+2. **Click AI Heal**: Click the "AI Heal" button next to any failed test
+3. **Provide API Key**: Enter your OpenAI API key
+4. **Review Healed Script**: The AI will analyze the failure and generate an improved, more resilient test script
+5. **Apply Fix**: Review and apply the healed script to your test case
+
+The AI analyzes error messages, stack traces, and screenshots to suggest fixes for:
+- Selector issues (element not found, changed selectors)
+- Timing problems (elements not ready, async operations)
+- Navigation issues (page not loaded, redirects)
+- Data validation failures
+
+**📖 See [AI_TEST_HEALING_GUIDE.md](AI_TEST_HEALING_GUIDE.md) for detailed guide and examples**
+
 ## 📊 Database Schema
 
 ### Entities
@@ -380,6 +400,7 @@ Blazor UI → API → MCP Service → AI Model (GPT/Claude/Local)
 - [x] Playwright integration
 - [x] Real-time test execution
 - [x] OpenAI-powered Playwright test script generation
+- [x] AI Test Healing for failed tests
 - [ ] ML-based defect prediction
 - [ ] Self-healing automation
 - [ ] Conversational AI assistant

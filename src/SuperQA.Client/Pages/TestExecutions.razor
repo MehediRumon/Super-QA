@@ -126,6 +126,12 @@
                                         <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(execution)">
                                             <i class="bi bi-eye"></i> Details
                                         </button>
+                                        @if (execution.Status == "Failed")
+                                        {
+                                            <button class="btn btn-sm btn-outline-success ms-2" @onclick="() => ShowHealDialog(execution)">
+                                                <i class="bi bi-magic"></i> AI Heal
+                                            </button>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -197,7 +203,106 @@
                         </dl>
                     </div>
                     <div class="modal-footer">
+                        @if (selectedExecution.Status == "Failed")
+                        {
+                            <button type="button" class="btn btn-success" @onclick="() => ShowHealDialog(selectedExecution)">
+                                <i class="bi bi-magic"></i> AI Heal This Test
+                            </button>
+                        }
                         <button type="button" class="btn btn-secondary" @onclick="CloseDetails">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showHealDialog)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">AI Test Healing: @healingExecution?.TestCaseTitle</h5>
+                        <button type="button" class="btn-close" @onclick="CloseHealDialog"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (!isHealing && string.IsNullOrWhiteSpace(healedScript))
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>AI Test Healing</strong> will analyze this test failure and generate an improved, more resilient test script.
+                                The AI will examine the error messages, stack traces, and original test to suggest fixes for:
+                                <ul class="mt-2">
+                                    <li>Selector issues (elements not found)</li>
+                                    <li>Timing problems (elements not ready)</li>
+                                    <li>Navigation issues</li>
+                                    <li>Test data problems</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">OpenAI API Key <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" @bind="healApiKey" placeholder="sk-..." />
+                                <small class="text-muted">Your API key is not stored and used only for this healing request.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">AI Model</label>
+                                <select class="form-select" @bind="healModel">
+                                    <option value="gpt-4">GPT-4 (Recommended)</option>
+                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                </select>
+                            </div>
+                        }
+                        else if (isHealing)
+                        {
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Healing...</span>
+                                </div>
+                                <p>AI is analyzing the failure and generating a healed test script...</p>
+                            </div>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(healedScript))
+                        {
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i> Test healed successfully! Review the improved script below.
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Healed Test Script</label>
+                                <textarea class="form-control font-monospace" rows="20" readonly>@healedScript</textarea>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Next Steps:</strong> Review the healed script above and manually update your test case. 
+                                The AI has attempted to fix the issues, but you should verify the changes before using them.
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(healError))
+                        {
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> @healError
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        @if (!isHealing && string.IsNullOrWhiteSpace(healedScript))
+                        {
+                            <button type="button" class="btn btn-success" @onclick="HealTest" disabled="@string.IsNullOrWhiteSpace(healApiKey)">
+                                <i class="bi bi-magic"></i> Heal Test
+                            </button>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(healedScript))
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="CopyHealedScript">
+                                <i class="bi bi-clipboard"></i> Copy Script
+                            </button>
+                        }
+                        <button type="button" class="btn btn-secondary" @onclick="CloseHealDialog">Close</button>
                     </div>
                 </div>
             </div>
@@ -216,6 +321,15 @@
     private string testRunStatus = "Not Started";
     private TestExecutionDto? selectedExecution;
     private System.Threading.Timer? statusTimer;
+
+    // AI Healing variables
+    private bool showHealDialog = false;
+    private bool isHealing = false;
+    private TestExecutionDto? healingExecution;
+    private string healApiKey = string.Empty;
+    private string healModel = "gpt-4";
+    private string healedScript = string.Empty;
+    private string healError = string.Empty;
 
     private int passedCount => executions?.Count(e => e.Status == "Passed") ?? 0;
     private int failedCount => executions?.Count(e => e.Status == "Failed") ?? 0;
@@ -308,6 +422,66 @@
     private void NavigateBack()
     {
         NavigationManager.NavigateTo($"/project/{ProjectId}");
+    }
+
+    private void ShowHealDialog(TestExecutionDto execution)
+    {
+        healingExecution = execution;
+        showHealDialog = true;
+        healedScript = string.Empty;
+        healError = string.Empty;
+        selectedExecution = null; // Close details modal if open
+    }
+
+    private void CloseHealDialog()
+    {
+        showHealDialog = false;
+        healingExecution = null;
+        healApiKey = string.Empty;
+        healedScript = string.Empty;
+        healError = string.Empty;
+    }
+
+    private async Task HealTest()
+    {
+        if (healingExecution == null || string.IsNullOrWhiteSpace(healApiKey))
+            return;
+
+        isHealing = true;
+        healError = string.Empty;
+
+        try
+        {
+            var request = new HealTestRequest
+            {
+                TestCaseId = healingExecution.TestCaseId,
+                ExecutionId = healingExecution.Id,
+                ApiKey = healApiKey,
+                Model = healModel
+            };
+
+            var response = await TestExecutionService.HealTestAsync(request);
+            healedScript = response.HealedScript;
+        }
+        catch (HttpRequestException ex)
+        {
+            healError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            healError = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isHealing = false;
+        }
+    }
+
+    private async Task CopyHealedScript()
+    {
+        // Note: Clipboard API requires JavaScript interop in Blazor
+        // For simplicity, user can manually copy from the textarea
+        await Task.CompletedTask;
     }
 
     public void Dispose()
