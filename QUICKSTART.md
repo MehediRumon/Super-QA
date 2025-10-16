@@ -104,12 +104,13 @@ If you see `ERR_CONNECTION_REFUSED` errors in the browser console when accessing
    - API should be on `https://localhost:7001`
    - Client should be on `https://localhost:5001` (or `http://localhost:5000`)
 
-2. **Verify the API is using the HTTPS profile**:
+2. **Verify the API is running on HTTPS**:
    - When you run `dotnet run` in the API directory, you should see:
      ```
      Now listening on: https://localhost:7001
+     Now listening on: http://localhost:7000
      ```
-   - If it shows `http://localhost:7000` instead, check that the "https" profile is first in `src/SuperQA.Api/Properties/launchSettings.json`
+   - The API listens on both HTTPS (port 7001) and HTTP (port 7000) by default
 
 ### Port Already in Use
 
