@@ -64,6 +64,7 @@ SuperQA/
 - ✅ **Automated test script generation**: AI generates locators, actions, and assertions
 - ✅ **Test script execution**: Execute generated Playwright scripts and view results
 - ✅ **Test Case Automation Script Generation**: Generate Playwright automation scripts from test cases with actual page element inspection
+- ✅ **Saved Test Scripts Management UI**: View, edit, execute, and delete AI-generated test scripts through a modern UI
 
 ### Phase 3: AI Analyzer (🔄 Planned)
 
@@ -274,6 +275,26 @@ The Playwright Test Generator allows you to generate executable C# test scripts 
 7. **Execute** (Optional): Click "Execute Test" to run the generated script and view results
 
 **📖 See [docs/PLAYWRIGHT_GENERATOR.md](docs/PLAYWRIGHT_GENERATOR.md) for detailed guide and examples**
+
+## 📝 Managing Saved Test Scripts
+
+The Saved Test Scripts feature provides a comprehensive UI for managing your AI-generated test scripts:
+
+### Features
+- **View All Scripts**: Browse all saved test scripts in a clean, organized list
+- **Edit Scripts**: Modify test script title, description, and automation code in-place
+- **Execute Tests**: Run Playwright tests directly from the UI and view detailed results
+- **Delete Scripts**: Remove unwanted scripts with confirmation
+- **Copy Code**: Quickly copy test script code to clipboard
+
+### How to Use
+1. **Navigate to Saved Test Scripts**: Click "Saved Test Scripts" in the navigation menu
+2. **Select a Script**: Click on any test script from the list to view details
+3. **Edit** (Optional): Click "Edit" to modify the script, then "Save" to persist changes
+4. **Execute**: Click "Execute Test" to run the script and view results
+5. **Delete** (Optional): Click "Delete" and confirm to remove the script
+
+**📖 See [SAVED_TEST_SCRIPTS_FEATURE.md](SAVED_TEST_SCRIPTS_FEATURE.md) for detailed documentation**
 
 ## 📊 Database Schema
 
