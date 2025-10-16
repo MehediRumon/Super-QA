@@ -8,6 +8,9 @@ public interface ITestCaseService
     Task<IEnumerable<TestCaseDto>> GetTestCasesAsync(int projectId);
     Task<IEnumerable<TestCaseDto>> GenerateTestCasesAsync(int requirementId);
     Task<GenerateAutomationScriptResponse> GenerateAutomationScriptAsync(GenerateAutomationScriptRequest request);
+    Task<TestCaseDto?> GetTestCaseAsync(int id);
+    Task<bool> UpdateTestCaseAsync(int id, TestCaseDto testCase);
+    Task<bool> DeleteTestCaseAsync(int id);
 }
 
 public class TestCaseService : ITestCaseService
@@ -62,6 +65,44 @@ public class TestCaseService : ITestCaseService
                 Success = false, 
                 ErrorMessage = $"Error: {ex.Message}" 
             };
+        }
+    }
+
+    public async Task<TestCaseDto?> GetTestCaseAsync(int id)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<TestCaseDto>($"api/testcases/{id}");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateTestCaseAsync(int id, TestCaseDto testCase)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/testcases/{id}", testCase);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteTestCaseAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/testcases/{id}");
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

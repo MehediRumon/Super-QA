@@ -136,4 +136,65 @@ public class TestCasesController : ControllerBase
             });
         }
     }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<TestCaseDto>> GetTestCase(int id)
+    {
+        var testCase = await _context.TestCases.FindAsync(id);
+        
+        if (testCase == null)
+            return NotFound();
+
+        return Ok(new TestCaseDto
+        {
+            Id = testCase.Id,
+            ProjectId = testCase.ProjectId,
+            RequirementId = testCase.RequirementId,
+            Title = testCase.Title,
+            Description = testCase.Description,
+            Preconditions = testCase.Preconditions,
+            Steps = testCase.Steps,
+            ExpectedResults = testCase.ExpectedResults,
+            IsAIGenerated = testCase.IsAIGenerated,
+            AutomationScript = testCase.AutomationScript,
+            CreatedAt = testCase.CreatedAt,
+            UpdatedAt = testCase.UpdatedAt
+        });
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult> UpdateTestCase(int id, [FromBody] TestCaseDto testCaseDto)
+    {
+        if (id != testCaseDto.Id)
+            return BadRequest("ID mismatch");
+
+        var testCase = await _context.TestCases.FindAsync(id);
+        if (testCase == null)
+            return NotFound();
+
+        testCase.Title = testCaseDto.Title;
+        testCase.Description = testCaseDto.Description;
+        testCase.Preconditions = testCaseDto.Preconditions;
+        testCase.Steps = testCaseDto.Steps;
+        testCase.ExpectedResults = testCaseDto.ExpectedResults;
+        testCase.AutomationScript = testCaseDto.AutomationScript;
+        testCase.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> DeleteTestCase(int id)
+    {
+        var testCase = await _context.TestCases.FindAsync(id);
+        if (testCase == null)
+            return NotFound();
+
+        _context.TestCases.Remove(testCase);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
 }
