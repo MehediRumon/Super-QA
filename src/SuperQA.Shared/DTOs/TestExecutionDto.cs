@@ -33,3 +33,15 @@ public class HealTestResponse
     public string HealedScript { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }
+
+public class ApplyHealedScriptRequest
+{
+    public int TestCaseId { get; set; }
+    public string HealedScript { get; set; } = string.Empty;
+}
+
+public class ApplyHealedScriptResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+}

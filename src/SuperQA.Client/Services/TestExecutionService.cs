@@ -11,6 +11,7 @@ public interface ITestExecutionService
     Task RunAllTestsAsync(int projectId);
     Task<string> GetTestRunStatusAsync(int projectId);
     Task<HealTestResponse> HealTestAsync(HealTestRequest request);
+    Task<ApplyHealedScriptResponse> ApplyHealedScriptAsync(ApplyHealedScriptRequest request);
 }
 
 public class TestExecutionService : ITestExecutionService
@@ -62,6 +63,14 @@ public class TestExecutionService : ITestExecutionService
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<HealTestResponse>();
         return result ?? new HealTestResponse { Message = "Unknown error occurred" };
+    }
+
+    public async Task<ApplyHealedScriptResponse> ApplyHealedScriptAsync(ApplyHealedScriptRequest request)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/testexecutions/apply-healed-script", request);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<ApplyHealedScriptResponse>();
+        return result ?? new ApplyHealedScriptResponse { Success = false, Message = "Unknown error occurred" };
     }
 
     private class StatusResponse

@@ -111,4 +111,37 @@ public class TestExecutionsController : ControllerBase
             return StatusCode(500, $"Error healing test: {ex.Message}");
         }
     }
+
+    [HttpPost("apply-healed-script")]
+    public async Task<ActionResult<ApplyHealedScriptResponse>> ApplyHealedScript([FromBody] ApplyHealedScriptRequest request)
+    {
+        try
+        {
+            var testCase = await _testExecutionService.GetTestCaseAsync(request.TestCaseId);
+            if (testCase == null)
+            {
+                return NotFound(new ApplyHealedScriptResponse
+                {
+                    Success = false,
+                    Message = $"Test case with ID {request.TestCaseId} not found."
+                });
+            }
+
+            await _testExecutionService.UpdateTestCaseAutomationScriptAsync(request.TestCaseId, request.HealedScript);
+
+            return Ok(new ApplyHealedScriptResponse
+            {
+                Success = true,
+                Message = "Healed script applied successfully to the test case."
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApplyHealedScriptResponse
+            {
+                Success = false,
+                Message = $"Error applying healed script: {ex.Message}"
+            });
+        }
+    }
 }

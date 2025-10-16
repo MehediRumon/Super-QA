@@ -266,20 +266,43 @@
                         }
                         else if (!string.IsNullOrWhiteSpace(healedScript))
                         {
-                            <div class="alert alert-success">
-                                <i class="bi bi-check-circle"></i> Test healed successfully! Review the improved script below.
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Healed Test Script</label>
-                                <textarea class="form-control font-monospace" rows="20" readonly>@healedScript</textarea>
-                            </div>
-                            
-                            <div class="alert alert-warning">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                <strong>Next Steps:</strong> Review the healed script above and manually update your test case. 
-                                The AI has attempted to fix the issues, but you should verify the changes before using them.
-                            </div>
+                            @if (!isApplying && string.IsNullOrWhiteSpace(applyMessage))
+                            {
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle"></i> Test healed successfully! Review the improved script below.
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Healed Test Script</label>
+                                    <textarea class="form-control font-monospace" rows="20" readonly>@healedScript</textarea>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Review the healed script above.</strong> The AI has analyzed the failure and generated an improved version.
+                                    You can apply it automatically to your test case or copy it manually.
+                                </div>
+                            }
+                            else if (isApplying)
+                            {
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary mb-3" role="status">
+                                        <span class="visually-hidden">Applying...</span>
+                                    </div>
+                                    <p>Applying healed script to test case...</p>
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(applyMessage))
+                            {
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle-fill"></i> @applyMessage
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Applied Script</label>
+                                    <textarea class="form-control font-monospace" rows="20" readonly>@healedScript</textarea>
+                                </div>
+                            }
                         }
 
                         @if (!string.IsNullOrWhiteSpace(healError))
@@ -296,9 +319,12 @@
                                 <i class="bi bi-magic"></i> Heal Test
                             </button>
                         }
-                        else if (!string.IsNullOrWhiteSpace(healedScript))
+                        else if (!string.IsNullOrWhiteSpace(healedScript) && !isApplying && string.IsNullOrWhiteSpace(applyMessage))
                         {
-                            <button type="button" class="btn btn-primary" @onclick="CopyHealedScript">
+                            <button type="button" class="btn btn-success" @onclick="ApplyHealedScript">
+                                <i class="bi bi-check-circle"></i> Apply Healed Script
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" @onclick="CopyHealedScript">
                                 <i class="bi bi-clipboard"></i> Copy Script
                             </button>
                         }
@@ -325,11 +351,13 @@
     // AI Healing variables
     private bool showHealDialog = false;
     private bool isHealing = false;
+    private bool isApplying = false;
     private TestExecutionDto? healingExecution;
     private string healApiKey = string.Empty;
     private string healModel = "gpt-4";
     private string healedScript = string.Empty;
     private string healError = string.Empty;
+    private string applyMessage = string.Empty;
 
     private int passedCount => executions?.Count(e => e.Status == "Passed") ?? 0;
     private int failedCount => executions?.Count(e => e.Status == "Failed") ?? 0;
@@ -440,6 +468,7 @@
         healApiKey = string.Empty;
         healedScript = string.Empty;
         healError = string.Empty;
+        applyMessage = string.Empty;
     }
 
     private async Task HealTest()
@@ -482,6 +511,49 @@
         // Note: Clipboard API requires JavaScript interop in Blazor
         // For simplicity, user can manually copy from the textarea
         await Task.CompletedTask;
+    }
+
+    private async Task ApplyHealedScript()
+    {
+        if (healingExecution == null || string.IsNullOrWhiteSpace(healedScript))
+            return;
+
+        isApplying = true;
+        healError = string.Empty;
+
+        try
+        {
+            var request = new ApplyHealedScriptRequest
+            {
+                TestCaseId = healingExecution.TestCaseId,
+                HealedScript = healedScript
+            };
+
+            var response = await TestExecutionService.ApplyHealedScriptAsync(request);
+            
+            if (response.Success)
+            {
+                applyMessage = response.Message;
+                // Optionally reload executions to show updated test case
+                await LoadExecutions();
+            }
+            else
+            {
+                healError = response.Message;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            healError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            healError = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isApplying = false;
+        }
     }
 
     public void Dispose()

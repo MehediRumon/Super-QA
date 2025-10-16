@@ -252,4 +252,22 @@ public class TestExecutionService : ITestExecutionService
 
         return execution;
     }
+
+    public async Task<TestCase?> GetTestCaseAsync(int testCaseId)
+    {
+        return await _context.TestCases.FindAsync(testCaseId);
+    }
+
+    public async Task UpdateTestCaseAutomationScriptAsync(int testCaseId, string healedScript)
+    {
+        var testCase = await _context.TestCases.FindAsync(testCaseId);
+        if (testCase == null)
+        {
+            throw new ArgumentException($"Test case with ID {testCaseId} not found.");
+        }
+
+        testCase.AutomationScript = healedScript;
+        testCase.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
 }
