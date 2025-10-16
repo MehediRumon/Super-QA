@@ -97,6 +97,48 @@ public class PlaywrightController : ControllerBase
         }
     }
 
+    [HttpPost("heal-test")]
+    public async Task<ActionResult<HealTestResponse>> HealTest([FromBody] HealTestRequestDto request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.TestScript))
+                return BadRequest(new HealTestResponse { Message = "Test script is required" });
+
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                var settings = await _settingsService.GetSettingsAsync();
+                if (settings == null || string.IsNullOrWhiteSpace(settings.OpenAIApiKey))
+                {
+                    return BadRequest(new HealTestResponse { Message = "OpenAI API key is required" });
+                }
+                request.ApiKey = settings.OpenAIApiKey;
+                request.Model = settings.SelectedModel;
+            }
+
+            // Call OpenAI to heal the test
+            var healedScript = await _openAIService.HealTestScriptAsync(
+                request.TestScript,
+                request.ErrorMessage,
+                request.ExecutionLogs,
+                request.ApiKey,
+                request.Model);
+
+            return Ok(new HealTestResponse
+            {
+                HealedScript = healedScript,
+                Message = "Test script healed successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new HealTestResponse
+            {
+                Message = $"Error healing test: {ex.Message}"
+            });
+        }
+    }
+
     [HttpPost("generate-from-extension")]
     public async Task<ActionResult<PlaywrightTestGenerationResponse>> GenerateFromExtension([FromBody] GenerateFromExtensionRequest request, [FromQuery] int? extensionDataId = null)
     {

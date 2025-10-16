@@ -34,3 +34,12 @@ public class PlaywrightTestExecutionResponse
     public string? ErrorMessage { get; set; }
     public List<string> Logs { get; set; } = new();
 }
+
+public class HealTestRequestDto
+{
+    public string TestScript { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public List<string>? ExecutionLogs { get; set; }
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = "gpt-4o-mini";
+}
