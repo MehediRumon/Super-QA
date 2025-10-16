@@ -306,13 +306,15 @@ When a test fails, you can use the AI Test Healing feature to automatically anal
 2. **Click AI Heal**: Click the "AI Heal" button next to any failed test
 3. **Provide API Key**: Enter your OpenAI API key
 4. **Review Healed Script**: The AI will analyze the failure and generate an improved, more resilient test script
-5. **Apply Fix**: Review and apply the healed script to your test case
+5. **Apply Fix**: Click "Apply Healed Script" to automatically update the test case, or copy the script manually
 
 The AI analyzes error messages, stack traces, and screenshots to suggest fixes for:
 - Selector issues (element not found, changed selectors)
 - Timing problems (elements not ready, async operations)
 - Navigation issues (page not loaded, redirects)
 - Data validation failures
+
+**New in v2.0**: The healed script can now be automatically applied to your test case with a single click, eliminating manual copy/paste!
 
 **📖 See [AI_TEST_HEALING_GUIDE.md](AI_TEST_HEALING_GUIDE.md) for detailed guide and examples**
 
