@@ -245,39 +245,97 @@ if (sendToSuperQABtn) {
             sendStatus.style.color = 'white';
             
             try {
-                // Store data on the server and get a data ID
-                const response = await fetch('http://localhost:7000/api/playwright/store-extension-data', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
+                // Check if we're running in an extension context
+                const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
                 
-                if (response.ok) {
-                    const result = await response.json();
-                    const dataId = result.dataId;
-                    
-                    sendStatus.textContent = '✅ Opening SuperQA...';
-                    sendStatus.style.color = '#90EE90';
-                    
-                    // Open SuperQA with the data ID in the URL
-                    const superQAUrl = `http://localhost:5000/extension-test-review?dataId=${dataId}`;
-                    window.open(superQAUrl, '_blank');
-                    
-                    // Reset button after a delay
-                    setTimeout(() => {
-                        sendToSuperQABtn.disabled = false;
-                        sendStatus.textContent = '✅ Opened SuperQA! Review and generate your test.';
-                    }, 1000);
+                let response;
+                if (isExtension) {
+                    // Use chrome.runtime.sendMessage to communicate with background script
+                    // Background script can make the fetch request without CORS issues
+                    try {
+                        const result = await new Promise((resolve, reject) => {
+                            chrome.runtime.sendMessage({
+                                action: 'storeExtensionData',
+                                payload: payload
+                            }, (response) => {
+                                if (chrome.runtime.lastError) {
+                                    reject(new Error(chrome.runtime.lastError.message));
+                                } else if (response && response.error) {
+                                    reject(new Error(response.error));
+                                } else {
+                                    resolve(response);
+                                }
+                            });
+                        });
+                        
+                        if (result && result.dataId) {
+                            sendStatus.textContent = '✅ Opening SuperQA...';
+                            sendStatus.style.color = '#90EE90';
+                            
+                            // Open SuperQA with the data ID in the URL
+                            const superQAUrl = `http://localhost:5000/extension-test-review?dataId=${result.dataId}`;
+                            window.open(superQAUrl, '_blank');
+                            
+                            // Reset button after a delay
+                            setTimeout(() => {
+                                sendToSuperQABtn.disabled = false;
+                                sendStatus.textContent = '✅ Opened SuperQA! Review and generate your test.';
+                            }, 1000);
+                        } else {
+                            sendStatus.textContent = '❌ Failed to store data. Please try again.';
+                            sendStatus.style.color = '#ffcccb';
+                            sendToSuperQABtn.disabled = false;
+                        }
+                    } catch (bgError) {
+                        throw bgError;
+                    }
                 } else {
-                    sendStatus.textContent = '❌ Failed to store data. Please try again.';
-                    sendStatus.style.color = '#ffcccb';
-                    sendToSuperQABtn.disabled = false;
+                    // Fallback to direct fetch for non-extension context
+                    response = await fetch('http://localhost:7000/api/playwright/store-extension-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        const dataId = result.dataId;
+                        
+                        sendStatus.textContent = '✅ Opening SuperQA...';
+                        sendStatus.style.color = '#90EE90';
+                        
+                        // Open SuperQA with the data ID in the URL
+                        const superQAUrl = `http://localhost:5000/extension-test-review?dataId=${dataId}`;
+                        window.open(superQAUrl, '_blank');
+                        
+                        // Reset button after a delay
+                        setTimeout(() => {
+                            sendToSuperQABtn.disabled = false;
+                            sendStatus.textContent = '✅ Opened SuperQA! Review and generate your test.';
+                        }, 1000);
+                    } else {
+                        sendStatus.textContent = '❌ Failed to store data. Please try again.';
+                        sendStatus.style.color = '#ffcccb';
+                        sendToSuperQABtn.disabled = false;
+                    }
                 }
             } catch (error) {
                 console.error('Error opening SuperQA:', error);
-                sendStatus.textContent = `❌ Error: ${error.message}`;
+                
+                // Check if the error is a connection refused error
+                if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+                    sendStatus.innerHTML = '❌ Cannot connect to SuperQA API server.<br>' +
+                                          'Please ensure the API is running on port 7000.<br>' +
+                                          '<small>Run: <code>cd src/SuperQA.Api && dotnet run</code></small>';
+                } else if (error.message && error.message.includes('Could not establish connection')) {
+                    sendStatus.innerHTML = '❌ Extension communication error.<br>' +
+                                          'Please reload the extension and try again.<br>' +
+                                          '<small>Chrome Extensions → Developer mode → Reload</small>';
+                } else {
+                    sendStatus.textContent = `❌ Error: ${error.message}`;
+                }
                 sendStatus.style.color = '#ffcccb';
             } finally {
                 sendToSuperQABtn.disabled = false;
