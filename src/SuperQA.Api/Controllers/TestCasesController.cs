@@ -45,6 +45,32 @@ public class TestCasesController : ControllerBase
         return Ok(testCases);
     }
 
+    [HttpGet("with-automation-scripts")]
+    public async Task<ActionResult<IEnumerable<TestCaseDto>>> GetTestCasesWithAutomationScripts()
+    {
+        var testCases = await _context.TestCases
+            .Where(tc => !string.IsNullOrEmpty(tc.AutomationScript))
+            .OrderByDescending(tc => tc.CreatedAt)
+            .Select(tc => new TestCaseDto
+            {
+                Id = tc.Id,
+                ProjectId = tc.ProjectId,
+                RequirementId = tc.RequirementId,
+                Title = tc.Title,
+                Description = tc.Description,
+                Preconditions = tc.Preconditions,
+                Steps = tc.Steps,
+                ExpectedResults = tc.ExpectedResults,
+                IsAIGenerated = tc.IsAIGenerated,
+                AutomationScript = tc.AutomationScript,
+                CreatedAt = tc.CreatedAt,
+                UpdatedAt = tc.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(testCases);
+    }
+
     [HttpPost("generate")]
     public async Task<ActionResult<IEnumerable<TestCaseDto>>> GenerateTestCases(GenerateTestCasesRequest request)
     {

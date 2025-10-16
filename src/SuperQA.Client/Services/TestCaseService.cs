@@ -11,6 +11,7 @@ public interface ITestCaseService
     Task<TestCaseDto?> GetTestCaseAsync(int id);
     Task<bool> UpdateTestCaseAsync(int id, TestCaseDto testCase);
     Task<bool> DeleteTestCaseAsync(int id);
+    Task<IEnumerable<TestCaseDto>> GetTestCasesWithAutomationScriptsAsync();
 }
 
 public class TestCaseService : ITestCaseService
@@ -103,6 +104,19 @@ public class TestCaseService : ITestCaseService
         catch
         {
             return false;
+        }
+    }
+
+    public async Task<IEnumerable<TestCaseDto>> GetTestCasesWithAutomationScriptsAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<IEnumerable<TestCaseDto>>("api/testcases/with-automation-scripts")
+                ?? Array.Empty<TestCaseDto>();
+        }
+        catch
+        {
+            return Array.Empty<TestCaseDto>();
         }
     }
 }

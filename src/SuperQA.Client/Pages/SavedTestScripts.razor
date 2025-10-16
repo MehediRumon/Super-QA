@@ -375,28 +375,8 @@
         
         try
         {
-            // Get test cases from all projects that have automation scripts
-            var allProjects = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; // Try multiple project IDs
-            var allTestCases = new List<TestCaseDto>();
-            
-            foreach (var projectId in allProjects)
-            {
-                try
-                {
-                    var projectTestCases = await TestCaseService.GetTestCasesAsync(projectId);
-                    allTestCases.AddRange(projectTestCases);
-                }
-                catch
-                {
-                    // Project doesn't exist, continue
-                }
-            }
-            
-            // Filter to only test cases with automation scripts
-            testScripts = allTestCases
-                .Where(tc => !string.IsNullOrWhiteSpace(tc.AutomationScript))
-                .OrderByDescending(tc => tc.CreatedAt)
-                .ToList();
+            // Use the new efficient endpoint to get all test cases with automation scripts
+            testScripts = await TestCaseService.GetTestCasesWithAutomationScriptsAsync();
         }
         catch (Exception ex)
         {
