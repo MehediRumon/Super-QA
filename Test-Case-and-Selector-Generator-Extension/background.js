@@ -37,7 +37,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // This runs in the background service worker which has different CORS permissions
         const { payload } = message;
         
-        fetch('http://localhost:7000/api/playwright/store-extension-data', {
+        fetch('https://localhost:7001/api/playwright/store-extension-data', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

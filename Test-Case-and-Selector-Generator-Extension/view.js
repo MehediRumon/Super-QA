@@ -291,7 +291,7 @@ if (sendToSuperQABtn) {
                     }
                 } else {
                     // Fallback to direct fetch for non-extension context
-                    response = await fetch('http://localhost:7000/api/playwright/store-extension-data', {
+                    response = await fetch('https://localhost:7001/api/playwright/store-extension-data', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -327,7 +327,7 @@ if (sendToSuperQABtn) {
                 // Check if the error is a connection refused error
                 if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
                     sendStatus.innerHTML = '❌ Cannot connect to SuperQA API server.<br>' +
-                                          'Please ensure the API is running on port 7000.<br>' +
+                                          'Please ensure the API is running on port 7001.<br>' +
                                           '<small>Run: <code>cd src/SuperQA.Api && dotnet run</code></small>';
                 } else if (error.message && error.message.includes('Could not establish connection')) {
                     sendStatus.innerHTML = '❌ Extension communication error.<br>' +
