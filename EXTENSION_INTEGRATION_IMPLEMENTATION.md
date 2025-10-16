@@ -12,15 +12,20 @@ This implementation addresses three key issues with the Super-QA browser extensi
 ## 1. Port Configuration Fix
 
 ### Problem
-The browser extension was sending data to `https://localhost:7001/extension-test-review?dataId={id}`, but the UI server runs on `http://localhost:5000`.
+The browser extension was calling the API endpoint at `http://localhost:5000/api/playwright/store-extension-data`, but the API server runs on port 7000 (HTTP) or 7001 (HTTPS), not port 5000.
 
 ### Solution
 Updated `Test-Case-and-Selector-Generator-Extension/view.js`:
-- Changed API endpoint from `https://localhost:7001` to `http://localhost:5000`
-- Updated the SuperQA URL to open on `http://localhost:5000/extension-test-review?dataId={id}`
+- Changed API endpoint from `http://localhost:5000` to `http://localhost:7000`
+- The SuperQA UI URL remains on `http://localhost:5000/extension-test-review?dataId={id}` (Blazor Client)
+
+### Architecture
+- **SuperQA.Api**: Runs on `http://localhost:7000` (HTTP) or `https://localhost:7001` (HTTPS)
+- **SuperQA.Client** (Blazor UI): Runs on `http://localhost:5000` or `https://localhost:5001`
+- **Extension**: Calls API on port 7000, opens UI on port 5000
 
 ### Files Changed
-- `Test-Case-and-Selector-Generator-Extension/view.js` (lines 249 and 265)
+- `Test-Case-and-Selector-Generator-Extension/view.js` (line 249)
 
 ---
 
@@ -194,9 +199,9 @@ Added to `ExtensionTestReview.razor`:
 
 2. **Send to SuperQA**:
    - Click "Send to SuperQA" button
-   - Extension sends data to `http://localhost:5000/api/playwright/store-extension-data`
+   - Extension sends data to `http://localhost:7000/api/playwright/store-extension-data` (API endpoint)
    - Data is saved to database and assigned an ID
-   - SuperQA opens in new tab: `http://localhost:5000/extension-test-review?dataId={id}`
+   - SuperQA opens in new tab: `http://localhost:5000/extension-test-review?dataId={id}` (UI endpoint)
 
 3. **Review and Edit**:
    - View captured test data in ExtensionTestReview page
