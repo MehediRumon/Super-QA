@@ -16,6 +16,7 @@ public class SuperQADbContext : DbContext
     public DbSet<DefectPrediction> DefectPredictions => Set<DefectPrediction>();
     public DbSet<AIPromptLog> AIPromptLogs => Set<AIPromptLog>();
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
+    public DbSet<ExtensionTestData> ExtensionTestData => Set<ExtensionTestData>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +96,19 @@ public class SuperQADbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.OpenAIApiKey).HasMaxLength(500);
             entity.Property(e => e.SelectedModel).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<ExtensionTestData>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TestName).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.ApplicationUrl).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.StepsJson).IsRequired();
+            
+            entity.HasOne(e => e.TestCase)
+                .WithMany()
+                .HasForeignKey(e => e.TestCaseId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

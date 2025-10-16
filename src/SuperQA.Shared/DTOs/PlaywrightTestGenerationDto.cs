@@ -22,6 +22,8 @@ public class PlaywrightTestExecutionRequest
 {
     public string TestScript { get; set; } = string.Empty;
     public string ApplicationUrl { get; set; } = string.Empty;
+    public bool DebugMode { get; set; } = false;
+    public int? SlowMotion { get; set; } = null; // Milliseconds to slow down execution
 }
 
 public class PlaywrightTestExecutionResponse

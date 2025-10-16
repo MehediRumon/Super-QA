@@ -79,7 +79,11 @@ public class PlaywrightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.TestScript))
                 return BadRequest(new PlaywrightTestExecutionResponse { Success = false, Status = "Error", ErrorMessage = "Test script is required" });
 
-            var result = await _playwrightTestExecutor.ExecuteTestScriptAsync(request.TestScript, request.ApplicationUrl);
+            var result = await _playwrightTestExecutor.ExecuteTestScriptAsync(
+                request.TestScript, 
+                request.ApplicationUrl, 
+                request.DebugMode, 
+                request.SlowMotion);
             return Ok(result);
         }
         catch (Exception ex)
@@ -94,7 +98,7 @@ public class PlaywrightController : ControllerBase
     }
 
     [HttpPost("generate-from-extension")]
-    public async Task<ActionResult<PlaywrightTestGenerationResponse>> GenerateFromExtension([FromBody] GenerateFromExtensionRequest request)
+    public async Task<ActionResult<PlaywrightTestGenerationResponse>> GenerateFromExtension([FromBody] GenerateFromExtensionRequest request, [FromQuery] int? extensionDataId = null)
     {
         try
         {
@@ -174,6 +178,20 @@ public class PlaywrightController : ControllerBase
             _context.TestCases.Add(testCase);
             await _context.SaveChangesAsync();
 
+            // Link test case to extension data if provided
+            if (extensionDataId.HasValue)
+            {
+                var extensionData = await _context.ExtensionTestData
+                    .FirstOrDefaultAsync(e => e.Id == extensionDataId.Value);
+                
+                if (extensionData != null)
+                {
+                    extensionData.TestCaseId = testCase.Id;
+                    extensionData.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+            }
+
             return Ok(new PlaywrightTestGenerationResponse
             {
                 Success = true,
@@ -193,20 +211,27 @@ public class PlaywrightController : ControllerBase
     }
 
     [HttpPost("store-extension-data")]
-    public ActionResult<object> StoreExtensionData([FromBody] GenerateFromExtensionRequest request)
+    public async Task<ActionResult<object>> StoreExtensionData([FromBody] GenerateFromExtensionRequest request)
     {
         try
         {
-            // Store the data in memory cache with a unique ID
-            var dataId = Guid.NewGuid().ToString();
+            // Serialize steps to JSON
+            var stepsJson = System.Text.Json.JsonSerializer.Serialize(request.Steps);
             
-            // Store for 10 minutes
-            var cacheEntryOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
+            // Create new ExtensionTestData entity
+            var extensionData = new ExtensionTestData
+            {
+                TestName = request.TestName ?? "Unnamed Test",
+                ApplicationUrl = request.ApplicationUrl ?? string.Empty,
+                StepsJson = stepsJson,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
             
-            _cache.Set($"extension-data-{dataId}", request, cacheEntryOptions);
+            _context.ExtensionTestData.Add(extensionData);
+            await _context.SaveChangesAsync();
             
-            return Ok(new { dataId = dataId, message = "Data stored successfully" });
+            return Ok(new { dataId = extensionData.Id.ToString(), message = "Data stored successfully" });
         }
         catch (Exception ex)
         {
@@ -215,21 +240,121 @@ public class PlaywrightController : ControllerBase
     }
 
     [HttpGet("get-extension-data/{dataId}")]
-    public ActionResult<GenerateFromExtensionRequest> GetExtensionData(string dataId)
+    public async Task<ActionResult<GenerateFromExtensionRequest>> GetExtensionData(string dataId)
     {
         try
         {
-            if (_cache.TryGetValue($"extension-data-{dataId}", out GenerateFromExtensionRequest? data))
+            if (!int.TryParse(dataId, out int id))
             {
-                if (data != null)
-                {
-                    // Remove from cache after retrieving (one-time use)
-                    _cache.Remove($"extension-data-{dataId}");
-                    return Ok(data);
-                }
+                return BadRequest(new { error = "Invalid data ID" });
             }
             
-            return NotFound(new { error = "Data not found or expired" });
+            var extensionData = await _context.ExtensionTestData
+                .FirstOrDefaultAsync(e => e.Id == id);
+            
+            if (extensionData == null)
+            {
+                return NotFound(new { error = "Data not found" });
+            }
+            
+            // Deserialize steps from JSON
+            var steps = System.Text.Json.JsonSerializer.Deserialize<List<BrowserExtensionStep>>(extensionData.StepsJson);
+            
+            return Ok(new GenerateFromExtensionRequest
+            {
+                TestName = extensionData.TestName,
+                ApplicationUrl = extensionData.ApplicationUrl,
+                Steps = steps ?? new List<BrowserExtensionStep>()
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error retrieving data: {ex.Message}" });
+        }
+    }
+
+    [HttpPut("update-extension-data/{dataId}")]
+    public async Task<ActionResult<object>> UpdateExtensionData(string dataId, [FromBody] GenerateFromExtensionRequest request)
+    {
+        try
+        {
+            if (!int.TryParse(dataId, out int id))
+            {
+                return BadRequest(new { error = "Invalid data ID" });
+            }
+            
+            var extensionData = await _context.ExtensionTestData
+                .FirstOrDefaultAsync(e => e.Id == id);
+            
+            if (extensionData == null)
+            {
+                return NotFound(new { error = "Data not found" });
+            }
+            
+            // Update fields
+            extensionData.TestName = request.TestName ?? extensionData.TestName;
+            extensionData.ApplicationUrl = request.ApplicationUrl ?? extensionData.ApplicationUrl;
+            extensionData.StepsJson = System.Text.Json.JsonSerializer.Serialize(request.Steps);
+            extensionData.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = "Data updated successfully", dataId = extensionData.Id.ToString() });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error updating data: {ex.Message}" });
+        }
+    }
+
+    [HttpDelete("delete-extension-data/{dataId}")]
+    public async Task<ActionResult<object>> DeleteExtensionData(string dataId)
+    {
+        try
+        {
+            if (!int.TryParse(dataId, out int id))
+            {
+                return BadRequest(new { error = "Invalid data ID" });
+            }
+            
+            var extensionData = await _context.ExtensionTestData
+                .FirstOrDefaultAsync(e => e.Id == id);
+            
+            if (extensionData == null)
+            {
+                return NotFound(new { error = "Data not found" });
+            }
+            
+            _context.ExtensionTestData.Remove(extensionData);
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = "Data deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Error deleting data: {ex.Message}" });
+        }
+    }
+
+    [HttpGet("list-extension-data")]
+    public async Task<ActionResult<object>> ListExtensionData()
+    {
+        try
+        {
+            var extensionDataList = await _context.ExtensionTestData
+                .OrderByDescending(e => e.CreatedAt)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.TestName,
+                    e.ApplicationUrl,
+                    e.CreatedAt,
+                    e.UpdatedAt,
+                    e.TestCaseId
+                })
+                .ToListAsync();
+            
+            return Ok(extensionDataList);
         }
         catch (Exception ex)
         {
