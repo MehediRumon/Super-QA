@@ -33,12 +33,13 @@ In the healing dialog:
 - Select an AI model (GPT-4 recommended, GPT-4 Turbo, or GPT-3.5 Turbo)
 - Click **"Heal Test"**
 
-### 5. Review Healed Script
+### 5. Review and Apply Healed Script
 
-The AI will analyze the failure and generate an improved test script. Review the healed script and:
-- Copy the improved script
-- Manually update your test case with the healed version
-- Re-run the test to verify the fix
+The AI will analyze the failure and generate an improved test script. You have two options:
+- **Apply Healed Script** (Recommended): Click the "Apply Healed Script" button to automatically update the test case with the healed version
+- **Copy Script**: Manually copy the improved script and update your test case
+
+After applying the healed script, re-run the test to verify the fix works.
 
 ## What the AI Analyzes
 
@@ -70,7 +71,7 @@ The AI generates scripts with:
 - **Retry Logic**: Adds retry mechanisms where appropriate
 - **Best Practices**: Follows Playwright and modern test automation standards
 
-## API Endpoint
+## API Endpoints
 
 ### Heal Test Execution
 
@@ -99,6 +100,30 @@ The AI generates scripts with:
 - `400 Bad Request`: Cannot heal non-failed executions
 - `502 Bad Gateway`: OpenAI API error
 - `500 Internal Server Error`: Other errors
+
+### Apply Healed Script
+
+**POST** `/api/testexecutions/apply-healed-script`
+
+**Request Body:**
+```json
+{
+  "testCaseId": 1,
+  "healedScript": "// Healed test script..."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Healed script applied successfully to the test case."
+}
+```
+
+**Error Responses:**
+- `404 Not Found`: Test case not found
+- `500 Internal Server Error`: Error applying healed script
 
 ## Security & Privacy
 
