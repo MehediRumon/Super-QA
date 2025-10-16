@@ -64,34 +64,6 @@
                                 <span>Generate Test Script</span>
                             }
                         </button>
-
-                        @if (dataId.HasValue)
-                        {
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-outline-success" @onclick="SaveChanges" disabled="@isSaving">
-                                    @if (isSaving)
-                                    {
-                                        <span class="spinner-border spinner-border-sm me-1"></span>
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-save me-1"></i>
-                                    }
-                                    <span>Save Changes</span>
-                                </button>
-                                <button class="btn btn-outline-danger" @onclick="DeleteData" disabled="@isDeleting">
-                                    @if (isDeleting)
-                                    {
-                                        <span class="spinner-border spinner-border-sm me-1"></span>
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-trash me-1"></i>
-                                    }
-                                    <span>Delete</span>
-                                </button>
-                            </div>
-                        }
                     </div>
 
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -202,6 +174,34 @@
                                     <span>Execute Test</span>
                                 }
                             </button>
+
+                            @if (dataId.HasValue)
+                            {
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-success modern-btn" @onclick="SaveChanges" disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-save me-1"></i>
+                                        }
+                                        <span>Save Changes</span>
+                                    </button>
+                                    <button class="btn btn-outline-danger modern-btn" @onclick="DeleteData" disabled="@isDeleting">
+                                        @if (isDeleting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-trash me-1"></i>
+                                        }
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
@@ -252,6 +252,72 @@
                                 <pre class="code-block mt-2 small">@executionResult.Output</pre>
                             </div>
                         }
+
+                        @* Show Heal Test button only when test fails *@
+                        @if (executionResult.Status == "Fail" && !string.IsNullOrEmpty(generatedScript))
+                        {
+                            <div class="mt-4">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-warning btn-lg modern-btn" @onclick="HealTest" disabled="@isHealing">
+                                        @if (isHealing)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            <span>AI is Healing Test...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-magic me-2"></i>
+                                            <span>Heal Test with AI</span>
+                                        }
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-2 d-block text-center">
+                                    <i class="bi bi-info-circle me-1"></i>AI will analyze the failure and suggest improvements
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Show Healed Script section when healing is complete *@
+            @if (!string.IsNullOrEmpty(healedScript))
+            {
+                <div class="card modern-card shadow-lg border-0 mt-4">
+                    <div class="card-header bg-gradient-warning text-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-star-fill me-2"></i>AI Healed Test Script</h5>
+                        <button class="btn btn-sm btn-light" @onclick="CopyHealedToClipboard">
+                            <i class="bi bi-clipboard me-1"></i> Copy
+                        </button>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="alert alert-info">
+                            <i class="bi bi-lightbulb-fill me-2"></i>
+                            <strong>AI has improved your test script!</strong> Review the changes below and apply them if they look good.
+                        </div>
+                        
+                        <textarea class="form-control code-editor mb-3" 
+                                  @bind="healedScript" 
+                                  rows="20"></textarea>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-lg modern-btn" @onclick="ApplyHealing" disabled="@isApplyingHealing">
+                                @if (isApplyingHealing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Applying Healing...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    <span>Apply Healed Script</span>
+                                }
+                            </button>
+                            <button class="btn btn-outline-secondary modern-btn" @onclick="DiscardHealing">
+                                <i class="bi bi-x-circle me-1"></i>
+                                <span>Discard Healing</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             }
@@ -283,6 +349,10 @@
 
     .bg-gradient-success {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .bg-gradient-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     }
 
     .modern-btn {
@@ -358,6 +428,55 @@
     .alert {
         border-radius: 10px;
     }
+
+    .btn-group .modern-btn {
+        border-radius: 10px !important;
+    }
+
+    .btn-group .modern-btn:first-child {
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+
+    .btn-group .modern-btn:last-child {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+    }
+
+    .btn-outline-success.modern-btn {
+        border: 2px solid #28a745;
+        color: #28a745;
+    }
+
+    .btn-outline-success.modern-btn:hover:not(:disabled) {
+        background: #28a745;
+        color: white;
+    }
+
+    .btn-outline-danger.modern-btn {
+        border: 2px solid #dc3545;
+        color: #dc3545;
+    }
+
+    .btn-outline-danger.modern-btn:hover:not(:disabled) {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-outline-secondary.modern-btn {
+        border: 2px solid #6c757d;
+        color: #6c757d;
+    }
+
+    .btn-outline-secondary.modern-btn:hover:not(:disabled) {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-warning.modern-btn {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+    }
 </style>
 
 @code {
@@ -377,6 +496,9 @@
     private bool debugMode = false;
     private int slowMotion = 500;
     private PlaywrightTestExecutionResponse? executionResult = null;
+    private bool isHealing = false;
+    private bool isApplyingHealing = false;
+    private string healedScript = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -736,5 +858,111 @@
         }
         
         return parsedSteps;
+    }
+
+    private async Task HealTest()
+    {
+        if (executionResult == null || string.IsNullOrEmpty(generatedScript))
+            return;
+
+        errorMessage = string.Empty;
+        isHealing = true;
+        healedScript = string.Empty;
+
+        try
+        {
+            // Get settings for API key
+            var settings = await SettingsService.GetSettingsAsync();
+            if (settings == null || string.IsNullOrWhiteSpace(settings.OpenAIApiKey))
+            {
+                errorMessage = "OpenAI API key is required for AI healing. Please configure it in Settings.";
+                return;
+            }
+
+            // Prepare healing request
+            var healingRequest = new
+            {
+                TestScript = generatedScript,
+                ErrorMessage = executionResult.ErrorMessage,
+                ExecutionLogs = executionResult.Logs,
+                ApiKey = settings.OpenAIApiKey,
+                Model = settings.SelectedModel
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/playwright/heal-test", healingRequest);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<HealTestResponse>();
+                if (result != null && !string.IsNullOrEmpty(result.HealedScript))
+                {
+                    healedScript = result.HealedScript;
+                }
+                else
+                {
+                    errorMessage = "Failed to heal the test. The AI did not return a valid script.";
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Failed to heal test: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error healing test: {ex.Message}";
+        }
+        finally
+        {
+            isHealing = false;
+        }
+    }
+
+    private async Task ApplyHealing()
+    {
+        if (string.IsNullOrEmpty(healedScript))
+            return;
+
+        isApplyingHealing = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Apply the healed script to the current generated script
+            generatedScript = healedScript;
+            
+            // Clear the healed script and execution result to start fresh
+            healedScript = string.Empty;
+            executionResult = null;
+            
+            // Show success message
+            await JSRuntime.InvokeVoidAsync("alert", "Healed script applied successfully! You can now execute the improved test.");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error applying healed script: {ex.Message}";
+        }
+        finally
+        {
+            isApplyingHealing = false;
+        }
+    }
+
+    private void DiscardHealing()
+    {
+        healedScript = string.Empty;
+    }
+
+    private async Task CopyHealedToClipboard()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", healedScript);
+        }
+        catch
+        {
+            // Fallback or error handling
+        }
     }
 }

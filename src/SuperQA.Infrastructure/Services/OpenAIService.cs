@@ -127,4 +127,108 @@ IMPORTANT: The generated code MUST compile without errors. Every FillAsync/TypeA
 
         return generatedText.Trim();
     }
+
+    public async Task<string> HealTestScriptAsync(string testScript, string? errorMessage, List<string>? executionLogs, string apiKey, string model)
+    {
+        var logsSection = executionLogs != null && executionLogs.Any()
+            ? $"\n\nEXECUTION LOGS:\n{string.Join("\n", executionLogs)}"
+            : string.Empty;
+
+        var errorSection = !string.IsNullOrWhiteSpace(errorMessage)
+            ? $"\n\nERROR MESSAGE:\n{errorMessage}"
+            : string.Empty;
+
+        var prompt = $$"""
+You are an expert test automation engineer specializing in self-healing test scripts.
+
+ORIGINAL TEST SCRIPT:
+{{testScript}}{{errorSection}}{{logsSection}}
+
+YOUR TASK:
+Analyze the test failure and generate an IMPROVED, FIXED version of the test script that:
+1. Addresses the root cause of the failure
+2. Uses more robust selectors (prefer role+name, data-testid, or id over fragile CSS selectors)
+3. Adds appropriate waits and error handling where needed
+4. Maintains the same test intent and assertions
+5. Is COMPLETE and RUNNABLE C# code with NO syntax errors
+
+CRITICAL REQUIREMENTS:
+- Return ONLY the complete, fixed C# code (no markdown fences, no explanations)
+- Keep all using statements and class structure intact
+- Use Microsoft.Playwright and Microsoft.Playwright.NUnit with NUnit
+- Class must inherit from PageTest
+- Follow Playwright best practices (explicit waits, robust selectors)
+- If selectors are failing, suggest more stable alternatives (role-based, data attributes, etc.)
+- Add .WaitForAsync() or .WaitForLoadStateAsync() where race conditions might occur
+- If elements are not visible/enabled, add appropriate waits
+
+Example improvements:
+- Replace: Page.Locator("button").ClickAsync()
+  With: Page.GetByRole(AriaRole.Button, new() { Name = "Submit" }).ClickAsync()
+- Add waits: await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+- Add timeout: await element.ClickAsync(new() { Timeout = 10000 });
+- Check visibility: await element.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+
+Generate the COMPLETE, IMPROVED test script now:
+""";
+
+        var requestBody = new
+        {
+            model = model,
+            messages = new[]
+            {
+                new { role = "system", content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. Analyze test failures and generate improved, resilient test scripts using Playwright best practices. Return ONLY executable C# code with NO markdown fences or explanations." },
+                new { role = "user", content = prompt }
+            },
+            temperature = 0.3,
+            max_tokens = 2500
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        var response = await _httpClient.PostAsync(OpenAIEndpoint, content);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            var errorMessageResponse = response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.TooManyRequests =>
+                    "Rate limit exceeded. You've made too many requests to the OpenAI API. Please wait and try again.",
+                System.Net.HttpStatusCode.Unauthorized =>
+                    "Invalid API key. Please check your OpenAI API key and try again.",
+                System.Net.HttpStatusCode.PaymentRequired =>
+                    "Payment required. Your OpenAI account has insufficient credits.",
+                System.Net.HttpStatusCode.InternalServerError =>
+                    "OpenAI service error. Please try again later.",
+                System.Net.HttpStatusCode.ServiceUnavailable =>
+                    "OpenAI service unavailable. Please try again later.",
+                _ =>
+                    $"OpenAI API error ({response.StatusCode}): {errorContent}"
+            };
+            throw new HttpRequestException(errorMessageResponse);
+        }
+
+        var responseContent = await response.Content.ReadAsStringAsync();
+        var jsonResponse = JsonDocument.Parse(responseContent);
+
+        var generatedText = jsonResponse.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString() ?? string.Empty;
+
+        // Clean up markdown code blocks if present
+        generatedText = generatedText.Trim();
+        if (generatedText.StartsWith("```csharp"))
+            generatedText = generatedText.Substring("```csharp".Length);
+        else if (generatedText.StartsWith("```"))
+            generatedText = generatedText.Substring("```".Length);
+        if (generatedText.EndsWith("```"))
+            generatedText = generatedText[..^3];
+
+        return generatedText.Trim();
+    }
 }
