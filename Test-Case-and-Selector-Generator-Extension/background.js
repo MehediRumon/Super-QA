@@ -32,6 +32,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }, () => {
             chrome.storage.local.set({ urls: [], actions: [] });
         });
+    } else if (message.action === 'storeExtensionData') {
+        // Handle API call to store extension data
+        // This runs in the background service worker which has different CORS permissions
+        const { payload } = message;
+        
+        fetch('http://localhost:7000/api/playwright/store-extension-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            sendResponse({ dataId: data.dataId });
+        })
+        .catch(error => {
+            console.error('Error storing extension data:', error);
+            sendResponse({ error: error.message });
+        });
+        
+        return true; // Keep message channel open for async response
     } else if (message.action === 'downloadToPath') {
         // Handle custom path downloads
         const { filename, content, downloadPath } = message;
