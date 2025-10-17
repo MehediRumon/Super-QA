@@ -66,10 +66,12 @@ SuperQA/
 - ✅ **Test Case Automation Script Generation**: Generate Playwright automation scripts from test cases with actual page element inspection
 - ✅ **Saved Test Scripts Management UI**: View, edit, execute, and delete AI-generated test scripts through a modern UI
 - ✅ **AI Test Healing**: Intelligent self-healing for failed tests with AI-powered script repair
+- ✅ **Self-Healing Locators**: Automatic locator healing when elements are not found during test execution
 
-### Phase 3: AI Analyzer (🔄 Planned)
+### Phase 3: AI Analyzer (🔄 In Progress)
 
 - ✅ **AI Test Healing**: Automatically fix failed tests with intelligent script repair
+- ✅ **Self-Healing Locators**: Automatically detect and fix broken element locators during test execution
 - 🔄 Log analyzer with AI
 - 🔄 Automated bug report generation
 - 🔄 Root cause analysis
@@ -317,6 +319,22 @@ The AI analyzes error messages, stack traces, and screenshots to suggest fixes f
 **New in v2.0**: The healed script can now be automatically applied to your test case with a single click, eliminating manual copy/paste!
 
 **📖 See [AI_TEST_HEALING_GUIDE.md](AI_TEST_HEALING_GUIDE.md) for detailed guide and examples**
+
+## 🔧 Self-Healing Locators
+
+When tests fail due to changed element locators, the self-healing system automatically:
+
+1. **Detects Failure**: Identifies when a test fails because an element cannot be found
+2. **Analyzes Page**: Examines the HTML structure to find alternative selectors
+3. **Suggests Alternative**: Proposes a more stable locator (prefers id > data-testid > class)
+4. **Retries Test**: Attempts the action with the new locator
+5. **Updates Test Case**: Saves the healed locator for future test runs
+
+The self-healing system works automatically during test execution and requires no configuration.
+
+**Example:** If `#loginButton` fails, the system might find `[data-testid='loginButton']` and automatically update the test.
+
+**📖 See [SELF_HEALING_LOCATORS_GUIDE.md](SELF_HEALING_LOCATORS_GUIDE.md) for detailed guide and examples**
 
 ## 📊 Database Schema
 

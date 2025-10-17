@@ -54,6 +54,7 @@ builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
 builder.Services.AddScoped<IPlaywrightTestExecutor, PlaywrightTestExecutor>();
 builder.Services.AddScoped<IUserSettingsService, UserSettingsService>();
 builder.Services.AddHttpClient<IAITestHealingService, AITestHealingService>();
+builder.Services.AddHttpClient<ISelfHealingService, SelfHealingService>();
 
 var app = builder.Build();
 
