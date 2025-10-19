@@ -56,6 +56,7 @@ builder.Services.AddScoped<IUserSettingsService, UserSettingsService>();
 builder.Services.AddHttpClient<IAITestHealingService, AITestHealingService>();
 builder.Services.AddHttpClient<ISelfHealingService, SelfHealingService>();
 builder.Services.AddScoped<ILocatorValidationService, LocatorValidationService>();
+builder.Services.AddScoped<IScriptComparisonService, ScriptComparisonService>();
 
 var app = builder.Build();
 

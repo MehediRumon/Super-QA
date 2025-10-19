@@ -33,6 +33,19 @@ public class AIHealingImprovementsTests
         return mock.Object;
     }
 
+    private IScriptComparisonService CreateMockComparisonService()
+    {
+        var mock = new Mock<IScriptComparisonService>();
+        // Default behavior: validation passes (healed script is valid)
+        mock.Setup(s => s.ValidateHealedScript(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(true);
+        mock.Setup(s => s.GetChangedLocators(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<(string, string)>());
+        mock.Setup(s => s.ExtractLocators(It.IsAny<string>()))
+            .Returns(new List<string>());
+        return mock.Object;
+    }
+
     [Fact]
     public async Task HealTestScriptAsync_RejectsOverHealing_WhenTooManyLocatorsChanged()
     {
@@ -92,14 +105,27 @@ public class AIHealingImprovementsTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        
+        // Setup comparison service to detect over-healing (4 working locators changed)
+        var comparisonMock = new Mock<IScriptComparisonService>();
+        comparisonMock.Setup(s => s.ValidateHealedScript(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(false); // Validation fails due to over-healing
+        comparisonMock.Setup(s => s.GetChangedLocators(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<(string, string)> {
+                ("Page.ClickAsync(\"#login\")", "Page.GetByRole(AriaRole.Button, new() { Name = \"Login\" }).ClickAsync()"),
+                ("Page.FillAsync(\"#username\", \"test\")", "Page.GetByLabel(\"Username\").FillAsync(\"test\")"),
+                ("Page.FillAsync(\"#password\", \"pass\")", "Page.GetByLabel(\"Password\").FillAsync(\"pass\")"),
+                ("Page.ClickAsync(\"#submit\")", "Page.GetByRole(AriaRole.Button, new() { Name = \"Submit\" }).ClickAsync()")
+            });
+        var comparisonService = comparisonMock.Object;
+        
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4"));
 
-        Assert.Contains("changed too many locators", exception.Message);
-        Assert.Contains("incremental changes", exception.Message);
+        Assert.Contains("changed working locators", exception.Message);
     }
 
     [Fact]
@@ -161,7 +187,8 @@ public class AIHealingImprovementsTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -232,7 +259,8 @@ public class AIHealingImprovementsTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -296,7 +324,8 @@ public class AIHealingImprovementsTests
         
         // Configure validation service to detect the mismatch (select vs button)
         var validationService = CreateMockValidationService(isValid: true, hasMismatch: true);
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -361,7 +390,8 @@ public class AIHealingImprovementsTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -433,7 +463,8 @@ public class AIHealingImprovementsTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");

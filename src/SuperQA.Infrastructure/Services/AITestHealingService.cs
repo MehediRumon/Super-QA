@@ -15,16 +15,19 @@ public class AITestHealingService : IAITestHealingService
     private readonly SuperQADbContext _context;
     private readonly HttpClient _httpClient;
     private readonly ILocatorValidationService _validationService;
+    private readonly IScriptComparisonService _comparisonService;
     private const string OpenAIEndpoint = "https://api.openai.com/v1/chat/completions";
 
     public AITestHealingService(
         SuperQADbContext context, 
         HttpClient httpClient,
-        ILocatorValidationService validationService)
+        ILocatorValidationService validationService,
+        IScriptComparisonService comparisonService)
     {
         _context = context;
         _httpClient = httpClient;
         _validationService = validationService;
+        _comparisonService = comparisonService;
     }
 
     public async Task<string> HealTestScriptAsync(int testCaseId, int executionId, string apiKey, string model = "gpt-4")
@@ -387,37 +390,32 @@ public class AITestHealingService : IAITestHealingService
             }
         }
         
-        // Validation 4: Compare old and new scripts to detect inappropriate wholesale changes
-        if (!string.IsNullOrWhiteSpace(testCase.AutomationScript))
+        // Validation 4: Use script comparison service to ensure only the failing locator is changed
+        if (!string.IsNullOrWhiteSpace(testCase.AutomationScript) && 
+            !string.IsNullOrWhiteSpace(execution.ErrorMessage))
         {
-            var oldLocators = ExtractLocatorsFromScript(testCase.AutomationScript);
-            var newLocators = ExtractLocatorsFromScript(healedScript);
+            // Use the ScriptComparisonService to validate that only the failing locator was changed
+            bool isValid = _comparisonService.ValidateHealedScript(
+                testCase.AutomationScript, 
+                healedScript, 
+                execution.ErrorMessage);
             
-            // Check if too many locators were changed (possible sign of over-healing)
-            var changedLocators = oldLocators.Except(newLocators).ToList();
-            var protectedLocators = healingHistory
-                .Where(h => !string.IsNullOrWhiteSpace(h.NewLocator))
-                .Select(h => h.NewLocator!)
-                .ToList();
-            
-            // Count how many unprotected locators were changed
-            var unprotectedChanges = changedLocators
-                .Where(loc => !protectedLocators.Contains(loc))
-                .Count();
-            
-            // If more than 50% of unprotected locators changed, it's suspicious
-            var totalUnprotectedLocators = oldLocators
-                .Where(loc => !protectedLocators.Contains(loc))
-                .Count();
-            
-            if (totalUnprotectedLocators > 0 && 
-                unprotectedChanges > totalUnprotectedLocators * 0.5 &&
-                unprotectedChanges > 2) // Allow small changes
+            if (!isValid)
             {
+                // Get details about what changed
+                var changes = _comparisonService.GetChangedLocators(
+                    testCase.AutomationScript, 
+                    healedScript, 
+                    execution.ErrorMessage);
+                
+                var changedLocatorsList = string.Join(", ", 
+                    changes.Take(3).Select(c => $"'{c.Original}' → '{c.Healed}'"));
+                
                 return (false,
-                    $"Healed script changed too many locators ({unprotectedChanges} out of {totalUnprotectedLocators}). " +
-                    "AI healing should make incremental changes, not rewrite the entire test. " +
-                    "This may indicate the AI is selecting wrong elements or making inappropriate changes.");
+                    $"AI healing changed working locators that are not related to the failure. " +
+                    $"Changed locators: {changedLocatorsList}. " +
+                    "Only the failing locator mentioned in the error should be modified. " +
+                    "Working locators must be preserved even if they use XPath or older patterns.");
             }
         }
 
