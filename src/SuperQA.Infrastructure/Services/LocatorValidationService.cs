@@ -83,7 +83,7 @@ public class LocatorValidationService : ILocatorValidationService
 
     private string ExtractElementTypeHint(string locator)
     {
-        // Extract element type from role-based locators
+        // Extract element type from role-based locators (most specific)
         if (locator.Contains("AriaRole.Button") || locator.Contains("role='button'") || locator.Contains("role=\"button\""))
         {
             return "button";
@@ -96,10 +96,54 @@ public class LocatorValidationService : ILocatorValidationService
         {
             return "link";
         }
+        if (locator.Contains("AriaRole.Checkbox") || locator.Contains("role='checkbox'") || locator.Contains("role=\"checkbox\""))
+        {
+            return "checkbox";
+        }
+        if (locator.Contains("AriaRole.Radio") || locator.Contains("role='radio'") || locator.Contains("role=\"radio\""))
+        {
+            return "radio";
+        }
+        if (locator.Contains("AriaRole.Combobox") || locator.Contains("role='combobox'") || locator.Contains("role=\"combobox\""))
+        {
+            return "select";
+        }
+        
+        // Extract from Playwright GetBy methods
+        if (locator.Contains("GetByRole") && locator.Contains("Button"))
+        {
+            return "button";
+        }
+        if (locator.Contains("GetByRole") && locator.Contains("Link"))
+        {
+            return "link";
+        }
+        if (locator.Contains("GetByRole") && locator.Contains("Textbox"))
+        {
+            return "input";
+        }
 
-        // Extract from common naming patterns
+        // Extract from common naming patterns (less specific, check last)
         var lowerLocator = locator.ToLower();
-        if (lowerLocator.Contains("button") || lowerLocator.Contains("btn"))
+        
+        // Check for specific element types first to avoid false positives
+        if (lowerLocator.Contains("checkbox"))
+        {
+            return "checkbox";
+        }
+        if (lowerLocator.Contains("radio"))
+        {
+            return "radio";
+        }
+        if (lowerLocator.Contains("select") || lowerLocator.Contains("dropdown"))
+        {
+            return "select";
+        }
+        if (lowerLocator.Contains("textarea"))
+        {
+            return "textarea";
+        }
+        if (lowerLocator.Contains("button") || lowerLocator.Contains("btn") || lowerLocator.Contains("submit"))
         {
             return "button";
         }
@@ -107,9 +151,13 @@ public class LocatorValidationService : ILocatorValidationService
         {
             return "input";
         }
-        if (lowerLocator.Contains("link") || lowerLocator.Contains("anchor"))
+        if (lowerLocator.Contains("link") || lowerLocator.Contains("anchor") || lowerLocator.Contains("href"))
         {
             return "link";
+        }
+        if (lowerLocator.Contains("image") || lowerLocator.Contains("img"))
+        {
+            return "image";
         }
 
         return string.Empty;
@@ -119,17 +167,38 @@ public class LocatorValidationService : ILocatorValidationService
     {
         var lowerError = errorMessage.ToLower();
         
-        if (lowerError.Contains("button"))
+        // Check in order of specificity to avoid false matches
+        if (lowerError.Contains("checkbox"))
+        {
+            return "checkbox";
+        }
+        if (lowerError.Contains("radio"))
+        {
+            return "radio";
+        }
+        if (lowerError.Contains("textarea"))
+        {
+            return "textarea";
+        }
+        if (lowerError.Contains("select") || lowerError.Contains("dropdown"))
+        {
+            return "select";
+        }
+        if (lowerError.Contains("button") || lowerError.Contains("btn"))
         {
             return "button";
         }
-        if (lowerError.Contains("input") || lowerError.Contains("textbox"))
+        if (lowerError.Contains("input") || lowerError.Contains("textbox") || lowerError.Contains("field"))
         {
             return "input";
         }
-        if (lowerError.Contains("link"))
+        if (lowerError.Contains("link") || lowerError.Contains("anchor"))
         {
             return "link";
+        }
+        if (lowerError.Contains("image") || lowerError.Contains("img"))
+        {
+            return "image";
         }
 
         return string.Empty;
@@ -142,7 +211,12 @@ public class LocatorValidationService : ILocatorValidationService
         {
             new HashSet<string> { "button", "submit", "btn" },
             new HashSet<string> { "input", "textbox", "field", "text" },
-            new HashSet<string> { "link", "anchor", "a" }
+            new HashSet<string> { "link", "anchor", "a" },
+            new HashSet<string> { "checkbox", "check" },
+            new HashSet<string> { "radio", "radiobutton" },
+            new HashSet<string> { "select", "dropdown", "combobox" },
+            new HashSet<string> { "textarea", "multiline" },
+            new HashSet<string> { "image", "img" }
         };
 
         foreach (var group in compatibleGroups)
