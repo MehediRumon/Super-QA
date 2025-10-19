@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Moq.Protected;
 using SuperQA.Core.Entities;
+using SuperQA.Core.Interfaces;
 using SuperQA.Infrastructure.Data;
 using SuperQA.Infrastructure.Services;
 
@@ -19,13 +20,25 @@ public class AITestHealingServiceTests
         return new SuperQADbContext(options);
     }
 
+    private ILocatorValidationService CreateMockValidationService()
+    {
+        var mock = new Mock<ILocatorValidationService>();
+        // Default behavior: all validations pass
+        mock.Setup(v => v.IsLocatorValid(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(true);
+        mock.Setup(v => v.HasMismatchPatterns(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(false);
+        return mock.Object;
+    }
+
     [Fact]
     public async Task HealTestScriptAsync_TestCaseNotFound_ThrowsArgumentException()
     {
         // Arrange
         var context = CreateInMemoryContext();
         var httpClient = new HttpClient();
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -53,7 +66,8 @@ public class AITestHealingServiceTests
         await context.SaveChangesAsync();
 
         var httpClient = new HttpClient();
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -92,7 +106,8 @@ public class AITestHealingServiceTests
         await context.SaveChangesAsync();
 
         var httpClient = new HttpClient();
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -157,7 +172,8 @@ public class AITestHealingServiceTests
             .ReturnsAsync(mockResponse);
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -212,7 +228,8 @@ public class AITestHealingServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -265,7 +282,8 @@ public class AITestHealingServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -314,7 +332,7 @@ public class AITestHealingServiceTests
             Content = new StringContent(@"{
                 ""choices"": [{
                     ""message"": {
-                        ""content"": ""// Healed script""
+                        ""content"": ""await Page.GotoAsync(\""https://example.com/login\"");\nawait Page.GetByRole(AriaRole.Textbox, new() { Name = \""Username\"" }).FillAsync(\""testuser\"");\nawait Page.GetByRole(AriaRole.Button, new() { Name = \""Login\"" }).ClickAsync();""
                     }
                 }]
             }")
@@ -329,7 +347,8 @@ public class AITestHealingServiceTests
             .ReturnsAsync(mockResponse);
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act
         await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -344,7 +363,8 @@ public class AITestHealingServiceTests
         Assert.Equal(1, history.TestExecutionId);
         Assert.True(history.WasSuccessful);
         Assert.Equal("// Old script", history.OldScript);
-        Assert.Equal("// Healed script", history.NewScript);
+        Assert.Contains("Page.GotoAsync", history.NewScript);
+        Assert.Contains("GetByRole", history.NewScript);
     }
 
     [Fact]
@@ -399,7 +419,8 @@ public class AITestHealingServiceTests
             .ReturnsAsync(mockResponse);
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new AITestHealingService(context, httpClient);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");

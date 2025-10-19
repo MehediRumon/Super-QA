@@ -14,12 +14,17 @@ public class AITestHealingService : IAITestHealingService
 {
     private readonly SuperQADbContext _context;
     private readonly HttpClient _httpClient;
+    private readonly ILocatorValidationService _validationService;
     private const string OpenAIEndpoint = "https://api.openai.com/v1/chat/completions";
 
-    public AITestHealingService(SuperQADbContext context, HttpClient httpClient)
+    public AITestHealingService(
+        SuperQADbContext context, 
+        HttpClient httpClient,
+        ILocatorValidationService validationService)
     {
         _context = context;
         _httpClient = httpClient;
+        _validationService = validationService;
     }
 
     public async Task<string> HealTestScriptAsync(int testCaseId, int executionId, string apiKey, string model = "gpt-4")
@@ -59,7 +64,33 @@ public class AITestHealingService : IAITestHealingService
         // Call OpenAI to generate the healed script
         var healedScript = await CallOpenAIForHealingAsync(prompt, apiKey, model);
 
-        // Store healing history
+        // Validate the healed script to ensure it preserves previously corrected locators
+        var validationResult = ValidateHealedScript(testCase, execution, healedScript, healingHistory);
+        
+        if (!validationResult.IsValid)
+        {
+            // Log failed healing attempt
+            var failedHistory = new Core.Entities.HealingHistory
+            {
+                TestCaseId = testCaseId,
+                TestExecutionId = executionId,
+                HealingType = "AI-Healing",
+                OldScript = testCase.AutomationScript,
+                NewScript = healedScript,
+                WasSuccessful = false,
+                ErrorMessage = validationResult.ErrorMessage,
+                HealedAt = DateTime.UtcNow
+            };
+            _context.HealingHistories.Add(failedHistory);
+            await _context.SaveChangesAsync();
+            
+            throw new InvalidOperationException(
+                $"AI healing validation failed: {validationResult.ErrorMessage}. " +
+                "The healed script does not preserve previously corrected locators or contains invalid locators. " +
+                "Please review the test manually or try healing again with a different model.");
+        }
+
+        // Store successful healing history
         var history = new Core.Entities.HealingHistory
         {
             TestCaseId = testCaseId,
@@ -83,22 +114,42 @@ public class AITestHealingService : IAITestHealingService
         prompt.AppendLine("You are an expert test automation engineer specializing in self-healing test scripts.");
         prompt.AppendLine("A test has failed and needs to be fixed. Analyze the failure and generate an improved, healed test script.");
         prompt.AppendLine();
-        prompt.AppendLine("CRITICAL: This test has been healed before. You MUST preserve previously corrected locators and code.");
+        prompt.AppendLine("⚠️  CRITICAL RULES - VIOLATION WILL CAUSE REJECTION:");
+        prompt.AppendLine("1. PRESERVE ALL previously corrected locators (shown below) - DO NOT modify, remove, or replace them");
+        prompt.AppendLine("2. Make ONLY INCREMENTAL changes - fix what's broken, keep what works");
+        prompt.AppendLine("3. Use SPECIFIC locators - never use generic ones like 'button', 'div', 'input' alone");
+        prompt.AppendLine("4. Ensure element TYPE compatibility - buttons to buttons, inputs to inputs");
         prompt.AppendLine();
         
         // Include healing history to prevent overwriting previous fixes
         if (healingHistory.Any())
         {
-            prompt.AppendLine("HEALING HISTORY (PREVIOUSLY CORRECTED - DO NOT OVERWRITE):");
+            prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            prompt.AppendLine("🔒 PROTECTED LOCATORS - KEEP EXACTLY AS-IS:");
+            prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            
+            var protectedLocators = new List<string>();
             foreach (var history in healingHistory)
             {
                 if (!string.IsNullOrWhiteSpace(history.OldLocator) && !string.IsNullOrWhiteSpace(history.NewLocator))
                 {
-                    prompt.AppendLine($"✓ {history.OldLocator} → {history.NewLocator} (Corrected on {history.HealedAt:yyyy-MM-dd})");
+                    prompt.AppendLine($"✓ PROTECTED: {history.NewLocator}");
+                    prompt.AppendLine($"  (Previously fixed: {history.OldLocator} → {history.NewLocator} on {history.HealedAt:yyyy-MM-dd})");
+                    protectedLocators.Add(history.NewLocator);
                 }
             }
-            prompt.AppendLine();
-            prompt.AppendLine("IMPORTANT: Keep all these previously corrected locators in the healed script. Only modify code related to the current failure.");
+            
+            if (protectedLocators.Any())
+            {
+                prompt.AppendLine();
+                prompt.AppendLine($"📌 You MUST keep these {protectedLocators.Count} locator(s) unchanged in your healed script:");
+                foreach (var loc in protectedLocators)
+                {
+                    prompt.AppendLine($"   - {loc}");
+                }
+            }
+            
+            prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             prompt.AppendLine();
         }
         
@@ -120,7 +171,9 @@ public class AITestHealingService : IAITestHealingService
             prompt.AppendLine();
         }
 
-        prompt.AppendLine("FAILURE INFORMATION:");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("❌ FAILURE INFORMATION:");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         prompt.AppendLine($"Error Message: {execution.ErrorMessage}");
         prompt.AppendLine();
         
@@ -131,27 +184,33 @@ public class AITestHealingService : IAITestHealingService
             prompt.AppendLine();
         }
 
-        prompt.AppendLine("HEALING REQUIREMENTS:");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("🔧 HEALING REQUIREMENTS:");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         prompt.AppendLine("1. Analyze the failure reason carefully");
-        prompt.AppendLine("2. Identify potential issues:");
+        prompt.AppendLine("2. Identify the SPECIFIC issue causing this failure:");
         prompt.AppendLine("   - Selector problems (element not found, changed selectors)");
         prompt.AppendLine("   - Timing issues (elements not ready, async operations)");
         prompt.AppendLine("   - Navigation issues (page not loaded, redirects)");
         prompt.AppendLine("   - Data issues (incorrect test data, validation failures)");
-        prompt.AppendLine("3. Generate improved test steps with:");
+        prompt.AppendLine("3. Fix ONLY the broken part with:");
         prompt.AppendLine("   - More robust selectors (prefer role+name, data-testid, IDs)");
+        prompt.AppendLine("   - NEVER use bare tag names (button, div, input, span, a)");
         prompt.AppendLine("   - Proper wait strategies (explicit waits, element visibility checks)");
-        prompt.AppendLine("   - Better error handling");
-        prompt.AppendLine("   - Retry mechanisms where appropriate");
+        prompt.AppendLine("   - Better error handling and retry mechanisms");
         prompt.AppendLine("4. PRESERVE all previously corrected locators from healing history");
-        prompt.AppendLine("5. Make INCREMENTAL changes - only fix what's actually broken");
-        prompt.AppendLine("6. If an automation script exists, generate a COMPLETE, RUNNABLE healed Playwright C# script");
-        prompt.AppendLine("7. If no automation script exists, provide healed test steps in clear, actionable format");
+        prompt.AppendLine("5. Make INCREMENTAL changes - change as few lines as possible");
+        prompt.AppendLine("6. Ensure element type compatibility (don't replace button locators with input locators)");
+        prompt.AppendLine("7. If an automation script exists, generate a COMPLETE, RUNNABLE healed Playwright C# script");
+        prompt.AppendLine("8. If no automation script exists, provide healed test steps in clear, actionable format");
         prompt.AppendLine();
         prompt.AppendLine("HEALING OUTPUT FORMAT:");
         prompt.AppendLine("Provide ONLY the healed test steps or script, no explanations or markdown fences.");
         prompt.AppendLine("Make the test more resilient and likely to pass.");
-        prompt.AppendLine("CRITICAL: Do not change or overwrite previously corrected locators unless they are directly causing this specific failure.");
+        prompt.AppendLine();
+        prompt.AppendLine("⚠️  FINAL WARNING:");
+        prompt.AppendLine("If you modify any protected locator or use generic selectors, your response will be REJECTED.");
+        prompt.AppendLine("Focus on fixing ONLY what's broken while keeping everything else intact.");
 
         return prompt.ToString();
     }
@@ -166,7 +225,7 @@ public class AITestHealingService : IAITestHealingService
                 new 
                 { 
                     role = "system", 
-                    content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. You analyze test failures and generate improved, resilient test scripts that are more likely to succeed. You understand Playwright, Selenium, and modern test automation best practices. CRITICAL: You ALWAYS preserve previously corrected locators and code - you only make incremental changes to fix the specific failure. You never overwrite working code or previously healed locators unless they are directly causing the current failure."
+                    content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. You analyze test failures and generate improved, resilient test scripts. CRITICAL CONSTRAINTS: (1) You ALWAYS preserve previously corrected locators - you NEVER overwrite working code. (2) You make ONLY incremental changes to fix the specific failure. (3) You NEVER use generic locators like 'button', 'div', 'input' alone - always use specific selectors. (4) You ensure element type compatibility - buttons remain buttons, inputs remain inputs. (5) If asked to preserve specific locators, you keep them EXACTLY as-is without any modifications. Violating these rules will result in your response being rejected. You understand Playwright, Selenium, and modern test automation best practices."
                 },
                 new { role = "user", content = prompt }
             },
@@ -220,5 +279,156 @@ public class AITestHealingService : IAITestHealingService
             healedScript = healedScript[..^3];
 
         return healedScript.Trim();
+    }
+
+    /// <summary>
+    /// Validates that the healed script preserves previously corrected locators and doesn't introduce mismatched elements
+    /// </summary>
+    private (bool IsValid, string ErrorMessage) ValidateHealedScript(
+        Core.Entities.TestCase testCase,
+        Core.Entities.TestExecution execution,
+        string healedScript,
+        List<Core.Entities.HealingHistory> healingHistory)
+    {
+        // Validation 1: Check that previously corrected locators are preserved
+        if (healingHistory.Any())
+        {
+            foreach (var history in healingHistory.Where(h => !string.IsNullOrWhiteSpace(h.NewLocator)))
+            {
+                // The new locator from previous healing should be present in the healed script
+                // (unless it was the locator that failed this time)
+                if (!string.IsNullOrWhiteSpace(history.NewLocator) && 
+                    !healedScript.Contains(history.NewLocator))
+                {
+                    // Check if this was the locator that failed (mentioned in error)
+                    bool isFailedLocator = !string.IsNullOrWhiteSpace(execution.ErrorMessage) && 
+                                          execution.ErrorMessage.Contains(history.NewLocator);
+                    
+                    if (!isFailedLocator)
+                    {
+                        return (false, 
+                            $"Previously corrected locator '{history.NewLocator}' was removed from the script. " +
+                            $"This locator was successfully healed on {history.HealedAt:yyyy-MM-dd} and should be preserved.");
+                    }
+                }
+            }
+        }
+
+        // Validation 2: Check for overly generic locators that might match multiple elements
+        var genericPatterns = new[] { 
+            ("\"button\"", "button"), ("'button'", "button"),
+            ("\"div\"", "div"), ("'div'", "div"),
+            ("\"span\"", "span"), ("'span'", "span"),
+            ("\"input\"", "input"), ("'input'", "input"),
+            ("\"a\"", "a"), ("'a'", "a")
+        };
+
+        foreach (var (pattern, name) in genericPatterns)
+        {
+            if (healedScript.Contains($"ClickAsync({pattern})") ||
+                healedScript.Contains($"FillAsync({pattern}") ||
+                healedScript.Contains($"Locator({pattern})"))
+            {
+                return (false, 
+                    $"Healed script contains overly generic locator {pattern} that may match multiple elements. " +
+                    "Please use more specific locators like data-testid, IDs, or role+name combinations.");
+            }
+        }
+
+        // Validation 3: Check that the script doesn't have mismatched element types
+        // Extract error message element type and ensure healed locators are compatible
+        if (!string.IsNullOrWhiteSpace(execution.ErrorMessage))
+        {
+            // Look for patterns like "Button element not found" or "Input field missing"
+            var errorElementType = ExtractElementTypeFromError(execution.ErrorMessage);
+            
+            if (!string.IsNullOrEmpty(errorElementType))
+            {
+                // Extract potential new locators from the healed script
+                var newLocators = ExtractLocatorsFromScript(healedScript);
+                
+                foreach (var locator in newLocators)
+                {
+                    // Check if this locator might target a different element type
+                    if (_validationService.HasMismatchPatterns(locator, execution.ErrorMessage))
+                    {
+                        return (false,
+                            $"Healed script contains locator '{locator}' that may target an incompatible element type. " +
+                            $"The error indicates a '{errorElementType}' element, but the locator suggests a different type.");
+                    }
+                }
+            }
+        }
+
+        // Validation 4: Ensure the script is not empty or malformed
+        if (string.IsNullOrWhiteSpace(healedScript))
+        {
+            return (false, "Healed script is empty.");
+        }
+
+        if (healedScript.Length < 20) // Arbitrary minimum length for a valid script
+        {
+            return (false, "Healed script appears to be incomplete or malformed.");
+        }
+
+        // All validations passed
+        return (true, string.Empty);
+    }
+
+    private string ExtractElementTypeFromError(string errorMessage)
+    {
+        var lowerError = errorMessage.ToLower();
+        
+        if (lowerError.Contains("button"))
+        {
+            return "button";
+        }
+        if (lowerError.Contains("input") || lowerError.Contains("textbox") || lowerError.Contains("field"))
+        {
+            return "input";
+        }
+        if (lowerError.Contains("link"))
+        {
+            return "link";
+        }
+        if (lowerError.Contains("checkbox"))
+        {
+            return "checkbox";
+        }
+        if (lowerError.Contains("radio"))
+        {
+            return "radio";
+        }
+
+        return string.Empty;
+    }
+
+    private List<string> ExtractLocatorsFromScript(string script)
+    {
+        var locators = new List<string>();
+        
+        // Extract CSS selectors from common Playwright methods
+        var patterns = new[]
+        {
+            @"ClickAsync\([""']([^""']+)[""']",
+            @"FillAsync\([""']([^""']+)[""']",
+            @"Locator\([""']([^""']+)[""']",
+            @"WaitForSelectorAsync\([""']([^""']+)[""']",
+            @"GetByRole\([^,]+,\s*new\(\)\s*\{\s*Name\s*=\s*[""']([^""']+)[""']",
+        };
+
+        foreach (var pattern in patterns)
+        {
+            var matches = System.Text.RegularExpressions.Regex.Matches(script, pattern);
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                if (match.Groups.Count > 1)
+                {
+                    locators.Add(match.Groups[1].Value);
+                }
+            }
+        }
+
+        return locators.Distinct().ToList();
     }
 }
