@@ -11,16 +11,13 @@ public class TestExecutionService : ITestExecutionService
 {
     private readonly SuperQADbContext _context;
     private readonly IConfiguration _configuration;
-    private readonly ISelfHealingService? _selfHealingService;
 
     public TestExecutionService(
         SuperQADbContext context, 
-        IConfiguration configuration,
-        ISelfHealingService? selfHealingService = null)
+        IConfiguration configuration)
     {
         _context = context;
         _configuration = configuration;
-        _selfHealingService = selfHealingService;
     }
 
     public async Task<int> ExecuteTestAsync(int testCaseId, string? baseUrl = null)
@@ -111,14 +108,14 @@ public class TestExecutionService : ITestExecutionService
                 else if (trimmedStep.Contains("click", StringComparison.OrdinalIgnoreCase))
                 {
                     var selector = ExtractSelector(trimmedStep);
-                    await ClickWithRetryAsync(page, selector, testCase.Id);
+                    await page.ClickAsync(selector, new() { Timeout = 5000 });
                 }
                 else if (trimmedStep.Contains("type", StringComparison.OrdinalIgnoreCase) || 
                          trimmedStep.Contains("enter", StringComparison.OrdinalIgnoreCase))
                 {
                     var selector = ExtractSelector(trimmedStep);
                     var text = ExtractText(trimmedStep);
-                    await FillWithRetryAsync(page, selector, text, testCase.Id);
+                    await page.FillAsync(selector, text, new() { Timeout = 5000 });
                 }
                 else if (trimmedStep.Contains("verify", StringComparison.OrdinalIgnoreCase) || 
                          trimmedStep.Contains("assert", StringComparison.OrdinalIgnoreCase))
@@ -207,74 +204,6 @@ public class TestExecutionService : ITestExecutionService
         }
 
         return string.Empty;
-    }
-
-    private async Task ClickWithRetryAsync(IPage page, string selector, int testCaseId)
-    {
-        try
-        {
-            await page.ClickAsync(selector, new() { Timeout = 5000 });
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("not found") || ex.Message.Contains("not visible"))
-        {
-            // Try to heal the selector
-            if (_selfHealingService != null)
-            {
-                var pageContent = await page.ContentAsync();
-                var newSelector = await _selfHealingService.SuggestUpdatedLocatorAsync(selector, pageContent);
-                
-                if (newSelector != selector)
-                {
-                    // Try with the new selector
-                    await page.ClickAsync(newSelector, new() { Timeout = 5000 });
-                    
-                    // Update the test case with the healed locator
-                    await _selfHealingService.UpdateLocatorAsync(testCaseId, selector, newSelector);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            else
-            {
-                throw;
-            }
-        }
-    }
-
-    private async Task FillWithRetryAsync(IPage page, string selector, string text, int testCaseId)
-    {
-        try
-        {
-            await page.FillAsync(selector, text, new() { Timeout = 5000 });
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("not found") || ex.Message.Contains("not visible"))
-        {
-            // Try to heal the selector
-            if (_selfHealingService != null)
-            {
-                var pageContent = await page.ContentAsync();
-                var newSelector = await _selfHealingService.SuggestUpdatedLocatorAsync(selector, pageContent);
-                
-                if (newSelector != selector)
-                {
-                    // Try with the new selector
-                    await page.FillAsync(newSelector, text, new() { Timeout = 5000 });
-                    
-                    // Update the test case with the healed locator
-                    await _selfHealingService.UpdateLocatorAsync(testCaseId, selector, newSelector);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            else
-            {
-                throw;
-            }
-        }
     }
 
     public async Task<IEnumerable<object>> GetTestExecutionsAsync(int projectId)
