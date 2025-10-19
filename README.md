@@ -1,6 +1,6 @@
 # Super-QA: AI-Powered Software Quality Assurance System
 
-An intelligent test automation and quality assurance platform leveraging AI/ML and the Model Context Protocol (MCP) for automated test generation, self-healing automation, and defect prediction.
+An intelligent test automation and quality assurance platform leveraging AI/ML and the Model Context Protocol (MCP) for automated test generation, AI-powered test healing, and defect prediction.
 
 ## 🎯 Overview
 
@@ -14,7 +14,7 @@ Super-QA is a comprehensive testing platform that combines AI-powered test gener
 |-------|-----------|---------|
 | **Frontend (UI)** | Blazor WebAssembly | Interactive web app, runs client-side with C# |
 | **Backend (API)** | ASP.NET Core Web API | Handles authentication, test data, logs, requirements upload |
-| **AI / ML Layer** | MCP-based AI Services | AI-driven test generation, analysis, and self-healing |
+| **AI / ML Layer** | MCP-based AI Services | AI-driven test generation, analysis, and AI-powered healing |
 | **Database** | SQL Server / In-Memory | Stores projects, test data, logs, embeddings |
 | **Automation** | Playwright | Executes and monitors web tests |
 | **Data Science** | Python ML/ML.NET | Defect prediction, risk scoring, analytics (Coming Soon) |
@@ -65,17 +65,17 @@ SuperQA/
 - ✅ **Test script execution**: Execute generated Playwright scripts and view results
 - ✅ **Test Case Automation Script Generation**: Generate Playwright automation scripts from test cases with actual page element inspection
 - ✅ **Saved Test Scripts Management UI**: View, edit, execute, and delete AI-generated test scripts through a modern UI
-- ✅ **AI Test Healing (Enhanced)**: Intelligent self-healing for failed tests with:
+- ✅ **AI Test Healing (Enhanced)**: Intelligent AI-powered healing for failed tests with:
+  - Test script and failure output sent to AI for analysis
+  - AI generates a complete fixed test script
   - Healing history tracking to prevent overwriting previous fixes
   - Locator validation to prevent mismatched element selection
   - Incremental healing that preserves working code
   - Context-aware AI prompts that remember previous healings
-- ✅ **Self-Healing Locators (Enhanced)**: Automatic locator healing when elements are not found during test execution with validation
 
 ### Phase 3: AI Analyzer (🔄 In Progress)
 
-- ✅ **AI Test Healing**: Automatically fix failed tests with intelligent script repair (Enhanced with history tracking and validation)
-- ✅ **Self-Healing Locators**: Automatically detect and fix broken element locators during test execution (Enhanced with validation)
+- ✅ **AI Test Healing**: Automatically fix failed tests with intelligent script repair by sending test script and failure details to AI (Enhanced with history tracking and validation)
 - ✅ **Healing History**: Complete audit trail of all healing attempts with success tracking
 - ✅ **Locator Validation**: Prevents mismatched element selection during healing
 - 🔄 Log analyzer with AI
@@ -85,7 +85,7 @@ SuperQA/
 ### Phase 4: ML Layer (🔄 Planned)
 
 - 🔄 Risk prediction models
-- 🔄 Self-healing automation
+- 🔄 Advanced ML-based automation
 - 🔄 Defect prediction
 
 ### Phase 5: Chatbot (🔄 Planned)
@@ -313,8 +313,18 @@ When a test fails, you can use the enhanced AI Test Healing feature to automatic
 1. **View Failed Test**: Navigate to Test Executions and identify failed tests
 2. **Click AI Heal**: Click the "AI Heal" button next to any failed test
 3. **Provide API Key**: Enter your OpenAI API key
-4. **Review Healed Script**: The AI will analyze the failure and generate an improved, more resilient test script
-5. **Apply Fix**: Click "Apply Healed Script" to automatically update the test case, or copy the script manually
+4. **AI Analysis**: The AI analyzes the complete test script, error messages, stack traces, and screenshots
+5. **Review Healed Script**: The AI generates an improved, more resilient test script
+6. **Apply Fix**: Click "Apply Healed Script" to automatically update the test case, or copy the script manually
+
+### How It Works
+
+The AI healing approach:
+1. **Sends to AI**: Complete generated test script + test execution output (error messages, stack traces, screenshots)
+2. **AI Analysis**: AI analyzes the failure context and identifies the root cause
+3. **AI Reply**: AI returns a fixed, improved test script
+4. **User Review**: User reviews the AI-generated fix
+5. **Apply**: User applies the healed script to update the test case
 
 ### Enhanced Features (v2.0)
 
@@ -339,22 +349,6 @@ The AI analyzes error messages, stack traces, and screenshots to suggest fixes f
 
 **📖 See [AI_HEALING_USER_GUIDE_V2.md](AI_HEALING_USER_GUIDE_V2.md) for the complete guide with examples**
 **📊 See [AI_HEALING_IMPROVEMENTS_SUMMARY.md](AI_HEALING_IMPROVEMENTS_SUMMARY.md) for technical details**
-
-## 🔧 Self-Healing Locators
-
-When tests fail due to changed element locators, the self-healing system automatically:
-
-1. **Detects Failure**: Identifies when a test fails because an element cannot be found
-2. **Analyzes Page**: Examines the HTML structure to find alternative selectors
-3. **Suggests Alternative**: Proposes a more stable locator (prefers id > data-testid > class)
-4. **Retries Test**: Attempts the action with the new locator
-5. **Updates Test Case**: Saves the healed locator for future test runs
-
-The self-healing system works automatically during test execution and requires no configuration.
-
-**Example:** If `#loginButton` fails, the system might find `[data-testid='loginButton']` and automatically update the test.
-
-**📖 See [SELF_HEALING_LOCATORS_GUIDE.md](SELF_HEALING_LOCATORS_GUIDE.md) for detailed guide and examples**
 
 ## 📊 Database Schema
 
@@ -393,6 +387,8 @@ The self-healing system works automatically during test execution and requires n
 - `GET /api/testexecutions/{executionId}` - Get details of a specific test execution
 - `POST /api/testexecutions/project/{projectId}/run-all` - Run all tests for a project in background
 - `GET /api/testexecutions/project/{projectId}/status` - Get test run status for a project
+- `POST /api/testexecutions/heal` - Heal a failed test using AI (sends test script + failure output to AI)
+- `POST /api/testexecutions/apply-healed-script` - Apply AI-healed script to a test case
 
 ### Playwright Test Generator
 
@@ -422,8 +418,8 @@ This project is licensed under the MIT License.
 Super-QA uses the Model Context Protocol (MCP) to communicate with AI models for:
 
 - **Test Generation**: Convert requirements into comprehensive test cases
-- **Self-Healing**: Automatically fix broken test selectors
-- **Analysis**: Analyze test failures and suggest fixes
+- **AI Test Healing**: Analyze test failures and generate fixed scripts
+- **Analysis**: Analyze test failures and suggest improvements
 - **Prediction**: Predict high-risk modules based on historical data
 
 ### MCP Flow
@@ -440,9 +436,9 @@ Blazor UI → API → MCP Service → AI Model (GPT/Claude/Local)
 - [x] Playwright integration
 - [x] Real-time test execution
 - [x] OpenAI-powered Playwright test script generation
-- [x] AI Test Healing for failed tests
+- [x] AI Test Healing for failed tests (sends test script + output to AI for fixes)
 - [ ] ML-based defect prediction
-- [ ] Self-healing automation
+- [ ] Advanced ML-based automation
 - [ ] Conversational AI assistant
 - [ ] Docker containerization
 - [ ] CI/CD pipeline integration
