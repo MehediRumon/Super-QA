@@ -431,4 +431,186 @@ public class AITestHealingServiceTests
         Assert.DoesNotContain("```", result);
         Assert.Contains("Healed script", result);
     }
+
+    [Fact]
+    public async Task HealTestScriptAsync_ReadonlyInputField_AddsProperWaits()
+    {
+        // Arrange
+        var context = CreateInMemoryContext();
+        var project = new Project { Id = 1, Name = "Test Project" };
+        var testCase = new TestCase
+        {
+            Id = 1,
+            ProjectId = 1,
+            Title = "Payment Approval Test",
+            Description = "Test payment approval with date selection",
+            Steps = "Navigate to payment approval page\nEnter till date\nClick search",
+            ExpectedResults = "Payment details displayed",
+            AutomationScript = @"await Page.GotoAsync(""https://ums.osl.team"");
+await Page.Locator(""//input[@id='PayTillDate']"").FillAsync(""2023-10-31"");
+await Page.Locator(""//input[@id='qnaPaymentViewBtn']"").ClickAsync();",
+            Project = project
+        };
+        var execution = new TestExecution
+        {
+            Id = 1,
+            TestCaseId = 1,
+            ProjectId = 1,
+            Status = "Failed",
+            ErrorMessage = @"System.TimeoutException : Timeout 30000ms exceeded.
+Call log:
+- waiting for Locator(""//input[@id='PayTillDate']"")
+- locator resolved to <input value="""" type=""text"" id=""PayTillDate"" name=""PayTillDate"" readonly=""readonly"" class=""form-control date-to""/>
+- fill(""2023-10-31"")
+- attempting fill action
+- waiting for element to be visible, enabled and editable
+- element is not editable - retrying fill action",
+            StackTrace = "at PaymentApprovalTests.TestPaymentApproval() line 32",
+            TestCase = testCase,
+            Project = project
+        };
+
+        context.Projects.Add(project);
+        context.TestCases.Add(testCase);
+        context.TestExecutions.Add(execution);
+        await context.SaveChangesAsync();
+
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var mockResponse = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(@"{
+                ""choices"": [{
+                    ""message"": {
+                        ""content"": ""await Page.GotoAsync(\""https://ums.osl.team\"");\nawait Page.WaitForLoadStateAsync(LoadState.NetworkIdle);\n\nvar tillDateInput = Page.Locator(\""#PayTillDate\"");\nawait tillDateInput.WaitForAsync(new() { State = WaitForSelectorState.Visible });\nawait tillDateInput.FillAsync(\""2023-10-31\"");\n\nawait Page.GetByRole(AriaRole.Button, new() { Name = \""Search\"" }).ClickAsync();""
+                    }
+                }]
+            }")
+        };
+
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(mockResponse);
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
+
+        // Act
+        var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("WaitForLoadStateAsync(LoadState.NetworkIdle)", result);
+        Assert.Contains("WaitForAsync(new() { State = WaitForSelectorState.Visible })", result);
+        Assert.Contains("Page.Locator(\"#PayTillDate\")", result);
+        Assert.Contains("GetByRole", result);
+
+        // Verify healing history was created
+        var history = await context.HealingHistories
+            .Where(h => h.TestCaseId == 1)
+            .FirstOrDefaultAsync();
+
+        Assert.NotNull(history);
+        Assert.Equal("AI-Healing", history.HealingType);
+        Assert.True(history.WasSuccessful);
+        
+        // Verify the error message contained readonly information
+        Assert.Contains("readonly", execution.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task HealTestScriptAsync_WorkingLocators_ShouldNotBeChanged()
+    {
+        // Arrange
+        var context = CreateInMemoryContext();
+        var project = new Project { Id = 1, Name = "Test Project" };
+        var testCase = new TestCase
+        {
+            Id = 1,
+            ProjectId = 1,
+            Title = "Login Test",
+            Description = "Test user login with working locators",
+            Steps = "Enter username\nEnter password\nClick submit",
+            ExpectedResults = "User logged in",
+            AutomationScript = @"await Page.GotoAsync(""https://example.com"");
+await Page.Locator(""//input[@id='UserName']"").FillAsync(""testuser"");
+await Page.Locator(""//input[@id='Password']"").FillAsync(""testpass"");
+await Page.Locator(""//button[@id='Submit']"").ClickAsync();
+await Page.Locator(""//div[@id='SpecialElement']"").ClickAsync();",
+            Project = project
+        };
+        var execution = new TestExecution
+        {
+            Id = 1,
+            TestCaseId = 1,
+            ProjectId = 1,
+            Status = "Failed",
+            ErrorMessage = @"Element not found: //div[@id='SpecialElement']
+Call log:
+- waiting for Locator(""//div[@id='SpecialElement']"")
+- element not found",
+            StackTrace = "at line 5",
+            TestCase = testCase,
+            Project = project
+        };
+
+        context.Projects.Add(project);
+        context.TestCases.Add(testCase);
+        context.TestExecutions.Add(execution);
+        await context.SaveChangesAsync();
+
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var mockResponse = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(@"{
+                ""choices"": [{
+                    ""message"": {
+                        ""content"": ""await Page.GotoAsync(\""https://example.com\"");\nawait Page.Locator(\""//input[@id='UserName']\"").FillAsync(\""testuser\"");\nawait Page.Locator(\""//input[@id='Password']\"").FillAsync(\""testpass\"");\nawait Page.Locator(\""//button[@id='Submit']\"").ClickAsync();\n\nvar specialElement = Page.Locator(\""#SpecialElement\"");\nawait specialElement.WaitForAsync(new() { State = WaitForSelectorState.Visible });\nawait specialElement.ClickAsync();""
+                    }
+                }]
+            }")
+        };
+
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(mockResponse);
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+        var validationService = CreateMockValidationService();
+        var service = new AITestHealingService(context, httpClient, validationService);
+
+        // Act
+        var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
+
+        // Assert
+        Assert.NotNull(result);
+        
+        // Verify working locators are preserved (not changed from XPath)
+        Assert.Contains("//input[@id='UserName']", result);
+        Assert.Contains("//input[@id='Password']", result);
+        Assert.Contains("//button[@id='Submit']", result);
+        
+        // Verify only the failing locator was fixed
+        Assert.Contains("#SpecialElement", result);
+        Assert.Contains("WaitForAsync", result);
+        
+        // Verify healing history was created
+        var history = await context.HealingHistories
+            .Where(h => h.TestCaseId == 1)
+            .FirstOrDefaultAsync();
+
+        Assert.NotNull(history);
+        Assert.Equal("AI-Healing", history.HealingType);
+        Assert.True(history.WasSuccessful);
+    }
 }

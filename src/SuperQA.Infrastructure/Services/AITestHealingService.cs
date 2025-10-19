@@ -193,11 +193,15 @@ public class AITestHealingService : IAITestHealingService
         prompt.AppendLine("   - Timing issues (elements not ready, async operations)");
         prompt.AppendLine("   - Navigation issues (page not loaded, redirects)");
         prompt.AppendLine("   - Data issues (incorrect test data, validation failures)");
+        prompt.AppendLine("   - Element state issues (readonly, disabled, hidden elements)");
         prompt.AppendLine("3. Fix ONLY the broken part with:");
-        prompt.AppendLine("   - More robust selectors (prefer role+name, data-testid, IDs)");
+        prompt.AppendLine("   - For FAILED locators: use more robust selectors (prefer role+name, data-testid, IDs)");
+        prompt.AppendLine("   - For WORKING locators: leave them unchanged, even if they use XPath or old patterns");
         prompt.AppendLine("   - NEVER use bare tag names (button, div, input, span, a)");
         prompt.AppendLine("   - Proper wait strategies (explicit waits, element visibility checks)");
         prompt.AppendLine("   - Better error handling and retry mechanisms");
+        prompt.AppendLine("   - For readonly/disabled elements: add WaitForAsync() before interaction");
+        prompt.AppendLine("   - Add WaitForLoadStateAsync(LoadState.NetworkIdle) after navigation for stability");
         prompt.AppendLine("4. PRESERVE all previously corrected locators from healing history");
         prompt.AppendLine("5. Make INCREMENTAL changes - change as few lines as possible");
         prompt.AppendLine("6. Ensure element type compatibility (don't replace button locators with input locators)");
@@ -207,10 +211,23 @@ public class AITestHealingService : IAITestHealingService
         prompt.AppendLine("🎯 TARGETED HEALING APPROACH:");
         prompt.AppendLine("- Look at the error message and stack trace to identify the EXACT locator that failed");
         prompt.AppendLine("- Change ONLY that specific failing locator or add necessary wait/retry logic");
-        prompt.AppendLine("- Keep ALL other locators and code exactly as-is");
+        prompt.AppendLine("- Keep ALL other locators and code exactly as-is, EVEN IF they use XPath or older patterns");
         prompt.AppendLine("- Do NOT rewrite working parts of the test");
         prompt.AppendLine("- Do NOT change locators that are not mentioned in the error");
+        prompt.AppendLine("- Do NOT 'improve' or 'modernize' working locators - if it works, leave it alone");
         prompt.AppendLine("- Changing more than 1-2 locators is almost always wrong unless explicitly needed");
+        prompt.AppendLine();
+        prompt.AppendLine("🔒 SPECIAL CASE - READONLY/DISABLED ELEMENTS:");
+        prompt.AppendLine("- If error mentions 'element is not editable', 'readonly', or 'disabled':");
+        prompt.AppendLine("  1. Use Locator() to get the element reference");
+        prompt.AppendLine("  2. Add WaitForAsync(new() { State = WaitForSelectorState.Visible }) before interaction");
+        prompt.AppendLine("  3. The element might need JavaScript evaluation to enable it, or alternative interaction");
+        prompt.AppendLine("  4. Consider using EvaluateAsync() to modify readonly/disabled attributes if needed");
+        prompt.AppendLine("  5. For date inputs, use proper date format (yyyy-MM-dd) and ensure element is ready");
+        prompt.AppendLine("- Example pattern for readonly inputs:");
+        prompt.AppendLine("  var element = Page.Locator(\"#elementId\");");
+        prompt.AppendLine("  await element.WaitForAsync(new() { State = WaitForSelectorState.Visible });");
+        prompt.AppendLine("  await element.FillAsync(\"value\");");
         prompt.AppendLine();
         prompt.AppendLine("HEALING OUTPUT FORMAT:");
         prompt.AppendLine("Provide ONLY the healed test steps or script, no explanations or markdown fences.");
@@ -219,6 +236,7 @@ public class AITestHealingService : IAITestHealingService
         prompt.AppendLine("⚠️  FINAL WARNING:");
         prompt.AppendLine("If you modify any protected locator or use generic selectors, your response will be REJECTED.");
         prompt.AppendLine("If you change more than necessary (over-heal), your response will be REJECTED.");
+        prompt.AppendLine("If you change working locators that are not mentioned in the error, your response will be REJECTED.");
         prompt.AppendLine("Focus on fixing ONLY what's broken while keeping everything else intact.");
 
         return prompt.ToString();
@@ -234,7 +252,7 @@ public class AITestHealingService : IAITestHealingService
                 new 
                 { 
                     role = "system", 
-                    content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. You analyze test failures and generate improved, resilient test scripts. CRITICAL CONSTRAINTS: (1) You ALWAYS preserve previously corrected locators - you NEVER overwrite working code. (2) You make ONLY incremental changes to fix the specific failure - typically changing just 1-2 lines. (3) You NEVER use generic locators like 'button', 'div', 'input' alone - always use specific selectors. (4) You ensure element type compatibility - buttons remain buttons, inputs remain inputs. (5) If asked to preserve specific locators, you keep them EXACTLY as-is without any modifications. (6) You identify the EXACT failing locator from the error message and change ONLY that locator. (7) You do NOT rewrite or refactor working parts of the test. (8) You do NOT change locators that are not mentioned in the error message. Violating these rules will result in your response being rejected. You understand Playwright, Selenium, and modern test automation best practices. Remember: surgical precision is key - fix only what's broken."
+                    content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. You analyze test failures and generate improved, resilient test scripts. CRITICAL CONSTRAINTS: (1) You ALWAYS preserve previously corrected locators - you NEVER overwrite working code. (2) You make ONLY incremental changes to fix the specific failure - typically changing just 1-2 lines. (3) You NEVER use generic locators like 'button', 'div', 'input' alone - always use specific selectors. (4) You ensure element type compatibility - buttons remain buttons, inputs remain inputs. (5) If asked to preserve specific locators, you keep them EXACTLY as-is without any modifications. (6) You identify the EXACT failing locator from the error message and change ONLY that locator. (7) You do NOT rewrite or refactor working parts of the test. (8) You do NOT change locators that are not mentioned in the error message - even if they use XPath or old patterns, if they work, leave them alone. (9) For readonly or disabled elements, you add proper waits with WaitForAsync() and consider using JavaScript evaluation if needed. (10) You add WaitForLoadStateAsync(LoadState.NetworkIdle) after navigation for better stability. (11) You NEVER 'modernize' or 'improve' working locators that are not failing. Violating these rules will result in your response being rejected. You understand Playwright, Selenium, and modern test automation best practices. Remember: surgical precision is key - fix only what's broken, leave everything else untouched."
                 },
                 new { role = "user", content = prompt }
             },
