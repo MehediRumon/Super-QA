@@ -31,6 +31,19 @@ public class AITestHealingServiceTests
         return mock.Object;
     }
 
+    private IScriptComparisonService CreateMockComparisonService()
+    {
+        var mock = new Mock<IScriptComparisonService>();
+        // Default behavior: validation passes (healed script is valid)
+        mock.Setup(s => s.ValidateHealedScript(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(true);
+        mock.Setup(s => s.GetChangedLocators(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<(string, string)>());
+        mock.Setup(s => s.ExtractLocators(It.IsAny<string>()))
+            .Returns(new List<string>());
+        return mock.Object;
+    }
+
     [Fact]
     public async Task HealTestScriptAsync_TestCaseNotFound_ThrowsArgumentException()
     {
@@ -38,7 +51,8 @@ public class AITestHealingServiceTests
         var context = CreateInMemoryContext();
         var httpClient = new HttpClient();
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -67,7 +81,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient();
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -107,7 +122,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient();
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -173,7 +189,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -229,7 +246,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -283,7 +301,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -348,7 +367,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -420,7 +440,8 @@ public class AITestHealingServiceTests
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -498,7 +519,8 @@ Call log:
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -587,7 +609,8 @@ Call log:
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
-        var service = new AITestHealingService(context, httpClient, validationService);
+        var comparisonService = CreateMockComparisonService();
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
