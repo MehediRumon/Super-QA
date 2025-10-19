@@ -275,6 +275,79 @@ public class AITestHealingServiceTests
     }
 
     [Fact]
+    public async Task HealTestScriptAsync_CreatesHealingHistory()
+    {
+        // Arrange
+        var context = CreateInMemoryContext();
+        var project = new Project { Id = 1, Name = "Test Project" };
+        var testCase = new TestCase
+        {
+            Id = 1,
+            ProjectId = 1,
+            Title = "Login Test",
+            Description = "Test user login",
+            Steps = "Navigate to login page\nEnter credentials\nClick login",
+            ExpectedResults = "User is logged in",
+            AutomationScript = "// Old script",
+            Project = project
+        };
+        var execution = new TestExecution
+        {
+            Id = 1,
+            TestCaseId = 1,
+            ProjectId = 1,
+            Status = "Failed",
+            ErrorMessage = "Element not found",
+            TestCase = testCase,
+            Project = project
+        };
+
+        context.Projects.Add(project);
+        context.TestCases.Add(testCase);
+        context.TestExecutions.Add(execution);
+        await context.SaveChangesAsync();
+
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var mockResponse = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(@"{
+                ""choices"": [{
+                    ""message"": {
+                        ""content"": ""// Healed script""
+                    }
+                }]
+            }")
+        };
+
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(mockResponse);
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+        var service = new AITestHealingService(context, httpClient);
+
+        // Act
+        await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
+
+        // Assert
+        var history = await context.HealingHistories
+            .Where(h => h.TestCaseId == 1)
+            .FirstOrDefaultAsync();
+
+        Assert.NotNull(history);
+        Assert.Equal("AI-Healing", history.HealingType);
+        Assert.Equal(1, history.TestExecutionId);
+        Assert.True(history.WasSuccessful);
+        Assert.Equal("// Old script", history.OldScript);
+        Assert.Equal("// Healed script", history.NewScript);
+    }
+
+    [Fact]
     public async Task HealTestScriptAsync_CleansMarkdownFormatting()
     {
         // Arrange

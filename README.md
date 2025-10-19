@@ -65,13 +65,19 @@ SuperQA/
 - ✅ **Test script execution**: Execute generated Playwright scripts and view results
 - ✅ **Test Case Automation Script Generation**: Generate Playwright automation scripts from test cases with actual page element inspection
 - ✅ **Saved Test Scripts Management UI**: View, edit, execute, and delete AI-generated test scripts through a modern UI
-- ✅ **AI Test Healing**: Intelligent self-healing for failed tests with AI-powered script repair
-- ✅ **Self-Healing Locators**: Automatic locator healing when elements are not found during test execution
+- ✅ **AI Test Healing (Enhanced)**: Intelligent self-healing for failed tests with:
+  - Healing history tracking to prevent overwriting previous fixes
+  - Locator validation to prevent mismatched element selection
+  - Incremental healing that preserves working code
+  - Context-aware AI prompts that remember previous healings
+- ✅ **Self-Healing Locators (Enhanced)**: Automatic locator healing when elements are not found during test execution with validation
 
 ### Phase 3: AI Analyzer (🔄 In Progress)
 
-- ✅ **AI Test Healing**: Automatically fix failed tests with intelligent script repair
-- ✅ **Self-Healing Locators**: Automatically detect and fix broken element locators during test execution
+- ✅ **AI Test Healing**: Automatically fix failed tests with intelligent script repair (Enhanced with history tracking and validation)
+- ✅ **Self-Healing Locators**: Automatically detect and fix broken element locators during test execution (Enhanced with validation)
+- ✅ **Healing History**: Complete audit trail of all healing attempts with success tracking
+- ✅ **Locator Validation**: Prevents mismatched element selection during healing
 - 🔄 Log analyzer with AI
 - 🔄 Automated bug report generation
 - 🔄 Root cause analysis
@@ -302,7 +308,7 @@ The Saved Test Scripts feature provides a comprehensive UI for managing your AI-
 
 ## 🔧 AI Test Healing
 
-When a test fails, you can use the AI Test Healing feature to automatically analyze and fix the issue:
+When a test fails, you can use the enhanced AI Test Healing feature to automatically analyze and fix the issue:
 
 1. **View Failed Test**: Navigate to Test Executions and identify failed tests
 2. **Click AI Heal**: Click the "AI Heal" button next to any failed test
@@ -310,15 +316,29 @@ When a test fails, you can use the AI Test Healing feature to automatically anal
 4. **Review Healed Script**: The AI will analyze the failure and generate an improved, more resilient test script
 5. **Apply Fix**: Click "Apply Healed Script" to automatically update the test case, or copy the script manually
 
+### Enhanced Features (v2.0)
+
+The AI healing system now includes:
+
+- **🔄 Healing History Tracking**: Prevents overwriting previously corrected locators
+- **✅ Locator Validation**: Ensures healed locators target the correct element types
+- **📈 Incremental Healing**: Makes targeted fixes while preserving working code
+- **🧠 Context-Aware AI**: Remembers previous healings and builds on successes
+
 The AI analyzes error messages, stack traces, and screenshots to suggest fixes for:
 - Selector issues (element not found, changed selectors)
 - Timing problems (elements not ready, async operations)
 - Navigation issues (page not loaded, redirects)
 - Data validation failures
 
-**New in v2.0**: The healed script can now be automatically applied to your test case with a single click, eliminating manual copy/paste!
+**Key Improvements**:
+- ✅ No more overwriting previously healed locators
+- ✅ Validation prevents targeting wrong elements (e.g., button vs input)
+- ✅ Progressive enhancement instead of complete script regeneration
+- ✅ Full audit trail of all healing attempts
 
-**📖 See [AI_TEST_HEALING_GUIDE.md](AI_TEST_HEALING_GUIDE.md) for detailed guide and examples**
+**📖 See [AI_HEALING_USER_GUIDE_V2.md](AI_HEALING_USER_GUIDE_V2.md) for the complete guide with examples**
+**📊 See [AI_HEALING_IMPROVEMENTS_SUMMARY.md](AI_HEALING_IMPROVEMENTS_SUMMARY.md) for technical details**
 
 ## 🔧 Self-Healing Locators
 

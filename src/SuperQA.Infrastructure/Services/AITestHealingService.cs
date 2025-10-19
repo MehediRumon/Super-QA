@@ -46,22 +46,62 @@ public class AITestHealingService : IAITestHealingService
             throw new InvalidOperationException("Can only heal failed test executions.");
         }
 
+        // Get healing history to avoid overwriting previously corrected locators
+        var healingHistory = await _context.HealingHistories
+            .Where(h => h.TestCaseId == testCaseId && h.WasSuccessful)
+            .OrderByDescending(h => h.HealedAt)
+            .Take(10)
+            .ToListAsync();
+
         // Build a comprehensive prompt for AI healing
-        var prompt = BuildHealingPrompt(testCase, execution);
+        var prompt = BuildHealingPrompt(testCase, execution, healingHistory);
 
         // Call OpenAI to generate the healed script
         var healedScript = await CallOpenAIForHealingAsync(prompt, apiKey, model);
 
+        // Store healing history
+        var history = new Core.Entities.HealingHistory
+        {
+            TestCaseId = testCaseId,
+            TestExecutionId = executionId,
+            HealingType = "AI-Healing",
+            OldScript = testCase.AutomationScript,
+            NewScript = healedScript,
+            WasSuccessful = true,
+            HealedAt = DateTime.UtcNow
+        };
+        _context.HealingHistories.Add(history);
+        await _context.SaveChangesAsync();
+
         return healedScript;
     }
 
-    private string BuildHealingPrompt(Core.Entities.TestCase testCase, Core.Entities.TestExecution execution)
+    private string BuildHealingPrompt(Core.Entities.TestCase testCase, Core.Entities.TestExecution execution, List<Core.Entities.HealingHistory> healingHistory)
     {
         var prompt = new StringBuilder();
         
         prompt.AppendLine("You are an expert test automation engineer specializing in self-healing test scripts.");
         prompt.AppendLine("A test has failed and needs to be fixed. Analyze the failure and generate an improved, healed test script.");
         prompt.AppendLine();
+        prompt.AppendLine("CRITICAL: This test has been healed before. You MUST preserve previously corrected locators and code.");
+        prompt.AppendLine();
+        
+        // Include healing history to prevent overwriting previous fixes
+        if (healingHistory.Any())
+        {
+            prompt.AppendLine("HEALING HISTORY (PREVIOUSLY CORRECTED - DO NOT OVERWRITE):");
+            foreach (var history in healingHistory)
+            {
+                if (!string.IsNullOrWhiteSpace(history.OldLocator) && !string.IsNullOrWhiteSpace(history.NewLocator))
+                {
+                    prompt.AppendLine($"✓ {history.OldLocator} → {history.NewLocator} (Corrected on {history.HealedAt:yyyy-MM-dd})");
+                }
+            }
+            prompt.AppendLine();
+            prompt.AppendLine("IMPORTANT: Keep all these previously corrected locators in the healed script. Only modify code related to the current failure.");
+            prompt.AppendLine();
+        }
+        
         prompt.AppendLine("ORIGINAL TEST CASE:");
         prompt.AppendLine($"Title: {testCase.Title}");
         prompt.AppendLine($"Description: {testCase.Description}");
@@ -75,7 +115,7 @@ public class AITestHealingService : IAITestHealingService
         
         if (!string.IsNullOrWhiteSpace(testCase.AutomationScript))
         {
-            prompt.AppendLine("ORIGINAL AUTOMATION SCRIPT:");
+            prompt.AppendLine("CURRENT AUTOMATION SCRIPT (may include previous fixes):");
             prompt.AppendLine(testCase.AutomationScript);
             prompt.AppendLine();
         }
@@ -103,12 +143,15 @@ public class AITestHealingService : IAITestHealingService
         prompt.AppendLine("   - Proper wait strategies (explicit waits, element visibility checks)");
         prompt.AppendLine("   - Better error handling");
         prompt.AppendLine("   - Retry mechanisms where appropriate");
-        prompt.AppendLine("4. If an automation script exists, generate a COMPLETE, RUNNABLE healed Playwright C# script");
-        prompt.AppendLine("5. If no automation script exists, provide healed test steps in clear, actionable format");
+        prompt.AppendLine("4. PRESERVE all previously corrected locators from healing history");
+        prompt.AppendLine("5. Make INCREMENTAL changes - only fix what's actually broken");
+        prompt.AppendLine("6. If an automation script exists, generate a COMPLETE, RUNNABLE healed Playwright C# script");
+        prompt.AppendLine("7. If no automation script exists, provide healed test steps in clear, actionable format");
         prompt.AppendLine();
         prompt.AppendLine("HEALING OUTPUT FORMAT:");
         prompt.AppendLine("Provide ONLY the healed test steps or script, no explanations or markdown fences.");
         prompt.AppendLine("Make the test more resilient and likely to pass.");
+        prompt.AppendLine("CRITICAL: Do not change or overwrite previously corrected locators unless they are directly causing this specific failure.");
 
         return prompt.ToString();
     }
@@ -123,7 +166,7 @@ public class AITestHealingService : IAITestHealingService
                 new 
                 { 
                     role = "system", 
-                    content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. You analyze test failures and generate improved, resilient test scripts that are more likely to succeed. You understand Playwright, Selenium, and modern test automation best practices."
+                    content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. You analyze test failures and generate improved, resilient test scripts that are more likely to succeed. You understand Playwright, Selenium, and modern test automation best practices. CRITICAL: You ALWAYS preserve previously corrected locators and code - you only make incremental changes to fix the specific failure. You never overwrite working code or previously healed locators unless they are directly causing the current failure."
                 },
                 new { role = "user", content = prompt }
             },

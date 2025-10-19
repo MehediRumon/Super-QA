@@ -17,6 +17,7 @@ public class SuperQADbContext : DbContext
     public DbSet<AIPromptLog> AIPromptLogs => Set<AIPromptLog>();
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
     public DbSet<ExtensionTestData> ExtensionTestData => Set<ExtensionTestData>();
+    public DbSet<HealingHistory> HealingHistories => Set<HealingHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +109,24 @@ public class SuperQADbContext : DbContext
             entity.HasOne(e => e.TestCase)
                 .WithMany()
                 .HasForeignKey(e => e.TestCaseId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<HealingHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HealingType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.OldLocator).HasMaxLength(500);
+            entity.Property(e => e.NewLocator).HasMaxLength(500);
+            
+            entity.HasOne(e => e.TestCase)
+                .WithMany()
+                .HasForeignKey(e => e.TestCaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.TestExecution)
+                .WithMany()
+                .HasForeignKey(e => e.TestExecutionId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
     }
