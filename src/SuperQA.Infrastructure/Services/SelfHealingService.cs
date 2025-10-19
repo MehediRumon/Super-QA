@@ -14,12 +14,17 @@ public class SelfHealingService : ISelfHealingService
 {
     private readonly SuperQADbContext _context;
     private readonly HttpClient _httpClient;
+    private readonly ILocatorValidationService? _validationService;
     private const string OpenAIEndpoint = "https://api.openai.com/v1/chat/completions";
 
-    public SelfHealingService(SuperQADbContext context, HttpClient httpClient)
+    public SelfHealingService(
+        SuperQADbContext context, 
+        HttpClient httpClient,
+        ILocatorValidationService? validationService = null)
     {
         _context = context;
         _httpClient = httpClient;
+        _validationService = validationService;
     }
 
     public async Task<string> SuggestUpdatedLocatorAsync(string failedLocator, string htmlStructure)
@@ -30,13 +35,38 @@ public class SelfHealingService : ISelfHealingService
             var alternatives = ExtractAlternativeLocators(failedLocator, htmlStructure);
             if (alternatives.Any())
             {
-                // Return the most stable alternative (prefer id > data-testid > class > tag)
-                return alternatives.First();
+                // Filter alternatives using validation service if available
+                if (_validationService != null)
+                {
+                    var validAlternatives = alternatives
+                        .Where(alt => _validationService.IsLocatorValid(failedLocator, alt, htmlStructure))
+                        .ToList();
+                    
+                    if (validAlternatives.Any())
+                    {
+                        // Return the most stable valid alternative
+                        return validAlternatives.First();
+                    }
+                }
+                else
+                {
+                    // Return the most stable alternative (prefer id > data-testid > class > tag)
+                    return alternatives.First();
+                }
             }
         }
 
-        // If no HTML structure provided or no alternatives found, return a fallback locator
-        return ConvertToFallbackLocator(failedLocator);
+        // If no HTML structure provided or no valid alternatives found, return a fallback locator
+        var fallback = ConvertToFallbackLocator(failedLocator);
+        
+        // Validate fallback if validation service is available
+        if (_validationService != null && !_validationService.IsLocatorValid(failedLocator, fallback, htmlStructure))
+        {
+            // If fallback is invalid, return original locator (better than a wrong one)
+            return failedLocator;
+        }
+        
+        return fallback;
     }
 
     public async Task<bool> UpdateLocatorAsync(int testCaseId, string oldLocator, string newLocator)
