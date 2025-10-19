@@ -47,6 +47,10 @@ public class SelfHealingService : ISelfHealingService
             return false;
         }
 
+        // Store old values for history tracking
+        var oldSteps = testCase.Steps;
+        var oldScript = testCase.AutomationScript;
+
         // Update the test steps with the new locator using precise matching
         if (!string.IsNullOrWhiteSpace(testCase.Steps))
         {
@@ -60,6 +64,21 @@ public class SelfHealingService : ISelfHealingService
         }
 
         testCase.UpdatedAt = DateTime.UtcNow;
+
+        // Track healing history
+        var healingHistory = new Core.Entities.HealingHistory
+        {
+            TestCaseId = testCaseId,
+            HealingType = "Self-Healing",
+            OldLocator = oldLocator,
+            NewLocator = newLocator,
+            OldScript = oldScript,
+            NewScript = testCase.AutomationScript,
+            WasSuccessful = true,
+            HealedAt = DateTime.UtcNow
+        };
+        _context.HealingHistories.Add(healingHistory);
+
         await _context.SaveChangesAsync();
 
         return true;
