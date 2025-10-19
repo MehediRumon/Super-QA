@@ -47,22 +47,47 @@ public class SelfHealingService : ISelfHealingService
             return false;
         }
 
-        // Update the test steps with the new locator
+        // Update the test steps with the new locator using precise matching
         if (!string.IsNullOrWhiteSpace(testCase.Steps))
         {
-            testCase.Steps = testCase.Steps.Replace(oldLocator, newLocator);
+            testCase.Steps = ReplaceLocatorPrecisely(testCase.Steps, oldLocator, newLocator);
         }
 
-        // Update the automation script with the new locator
+        // Update the automation script with the new locator using precise matching
         if (!string.IsNullOrWhiteSpace(testCase.AutomationScript))
         {
-            testCase.AutomationScript = testCase.AutomationScript.Replace(oldLocator, newLocator);
+            testCase.AutomationScript = ReplaceLocatorPrecisely(testCase.AutomationScript, oldLocator, newLocator);
         }
 
         testCase.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    private string ReplaceLocatorPrecisely(string text, string oldLocator, string newLocator)
+    {
+        // Use regex to replace only exact matches of the locator
+        // This ensures we don't replace partial matches like #btn in #btn-submit
+        
+        // Escape special regex characters in the locator
+        string escapedOldLocator = System.Text.RegularExpressions.Regex.Escape(oldLocator);
+        
+        // Match the locator when it's:
+        // - At the start/end of the string
+        // - Followed/preceded by whitespace, quotes, parentheses, or other non-alphanumeric characters
+        // This prevents partial replacements like #user -> #username
+        
+        string pattern = $@"(?<=[^\w-]|^){escapedOldLocator}(?=[^\w-]|$)";
+        
+        string result = System.Text.RegularExpressions.Regex.Replace(
+            text, 
+            pattern, 
+            newLocator,
+            System.Text.RegularExpressions.RegexOptions.None
+        );
+        
+        return result;
     }
 
     private string ConvertToFallbackLocator(string failedLocator)
