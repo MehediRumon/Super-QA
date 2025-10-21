@@ -178,6 +178,14 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                 var fixResponse = await _httpClient.PostAsync(OpenAIEndpoint, fixContent);
                 if (!fixResponse.IsSuccessStatusCode)
                 {
+                    // If rate limit is hit during retry, provide more specific error message
+                    if (fixResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        throw new HttpRequestException(
+                            "Initial test script generation succeeded but contained syntax errors. " +
+                            "Rate limit exceeded while attempting to fix syntax errors. " +
+                            "Please wait a few moments and try again, or check your quota at https://platform.openai.com/usage");
+                    }
                     break; // Stop retrying if API fails
                 }
 
@@ -371,6 +379,14 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                 var fixResponse = await _httpClient.PostAsync(OpenAIEndpoint, fixContent);
                 if (!fixResponse.IsSuccessStatusCode)
                 {
+                    // If rate limit is hit during retry, provide more specific error message
+                    if (fixResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        throw new HttpRequestException(
+                            "Initial test healing succeeded but contained syntax errors. " +
+                            "Rate limit exceeded while attempting to fix syntax errors. " +
+                            "Please wait a few moments and try again, or check your quota at https://platform.openai.com/usage");
+                    }
                     break; // Stop retrying if API fails
                 }
 
