@@ -8,11 +8,14 @@ namespace SuperQA.Infrastructure.Services;
 public class OpenAIService : IOpenAIService
 {
     private readonly HttpClient _httpClient;
+    private readonly ICSharpSyntaxValidationService _syntaxValidationService;
     private const string OpenAIEndpoint = "https://api.openai.com/v1/chat/completions";
+    private const int MaxRetries = 2; // Maximum number of retries for syntax error fixes
 
-    public OpenAIService(HttpClient httpClient)
+    public OpenAIService(HttpClient httpClient, ICSharpSyntaxValidationService syntaxValidationService)
     {
         _httpClient = httpClient;
+        _syntaxValidationService = syntaxValidationService;
     }
 
     public async Task<string> GeneratePlaywrightTestScriptAsync(string frsText, string applicationUrl, string apiKey, string model, string? pageStructure = null)
@@ -125,7 +128,84 @@ IMPORTANT: The generated code MUST compile without errors. Every FillAsync/TypeA
         if (generatedText.EndsWith("```"))
             generatedText = generatedText[..^3];
 
-        return generatedText.Trim();
+        generatedText = generatedText.Trim();
+
+        // Validate syntax and retry if needed
+        var (isValid, detailedError) = _syntaxValidationService.ValidateSyntaxWithDetails(generatedText);
+        if (!isValid)
+        {
+            // Try to regenerate with syntax error feedback
+            for (int retry = 0; retry < MaxRetries; retry++)
+            {
+                var fixPrompt = $$"""
+The previously generated code has syntax errors. Please fix them and regenerate.
+
+{{detailedError}}
+
+PREVIOUS CODE WITH ERRORS:
+{{generatedText}}
+
+Generate CORRECTED, COMPLETE, RUNNABLE C# code with NO syntax errors.
+Return ONLY the fixed C# code (no markdown fences, no explanations).
+""";
+
+                var fixRequestBody = new
+                {
+                    model = model,
+                    messages = new[]
+                    {
+                        new { role = "system", content = "You are an expert Playwright test automation engineer. Generate COMPLETE, RUNNABLE C# code with NO syntax errors. Fix any syntax errors in the code. The code must compile and run without errors." },
+                        new { role = "user", content = fixPrompt }
+                    },
+                    temperature = 0.1, // Lower temperature for more deterministic fixing
+                    max_tokens = 2000
+                };
+
+                var fixJson = JsonSerializer.Serialize(fixRequestBody);
+                var fixContent = new StringContent(fixJson, Encoding.UTF8, "application/json");
+
+                var fixResponse = await _httpClient.PostAsync(OpenAIEndpoint, fixContent);
+                if (!fixResponse.IsSuccessStatusCode)
+                {
+                    break; // Stop retrying if API fails
+                }
+
+                var fixResponseContent = await fixResponse.Content.ReadAsStringAsync();
+                var fixJsonResponse = JsonDocument.Parse(fixResponseContent);
+
+                var fixedText = fixJsonResponse.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString() ?? string.Empty;
+
+                // Clean up markdown
+                fixedText = fixedText.Trim();
+                if (fixedText.StartsWith("```csharp"))
+                    fixedText = fixedText.Substring("```csharp".Length);
+                else if (fixedText.StartsWith("```"))
+                    fixedText = fixedText.Substring("```".Length);
+                if (fixedText.EndsWith("```"))
+                    fixedText = fixedText[..^3];
+
+                fixedText = fixedText.Trim();
+
+                // Validate the fixed code
+                var (fixedIsValid, _) = _syntaxValidationService.ValidateSyntaxWithDetails(fixedText);
+                if (fixedIsValid)
+                {
+                    return fixedText; // Return the fixed code
+                }
+
+                generatedText = fixedText; // Update for next retry
+            }
+
+            // If all retries failed, throw an exception with details
+            throw new InvalidOperationException(
+                $"Failed to generate valid C# code after {MaxRetries} attempts. {detailedError}");
+        }
+
+        return generatedText;
     }
 
     public async Task<string> HealTestScriptAsync(string testScript, string? errorMessage, List<string>? executionLogs, string apiKey, string model)
@@ -229,6 +309,90 @@ Generate the COMPLETE, IMPROVED test script now:
         if (generatedText.EndsWith("```"))
             generatedText = generatedText[..^3];
 
-        return generatedText.Trim();
+        generatedText = generatedText.Trim();
+
+        // Validate syntax and retry if needed
+        var (isValid, detailedError) = _syntaxValidationService.ValidateSyntaxWithDetails(generatedText);
+        if (!isValid)
+        {
+            // Try to regenerate with syntax error feedback
+            for (int retry = 0; retry < MaxRetries; retry++)
+            {
+                var fixPrompt = $$"""
+The previously healed code has syntax errors. Please fix them and regenerate.
+
+{{detailedError}}
+
+ORIGINAL TEST SCRIPT:
+{{testScript}}
+
+ERROR MESSAGE:
+{{errorMessage}}
+
+PREVIOUS HEALED CODE WITH SYNTAX ERRORS:
+{{generatedText}}
+
+Generate CORRECTED, COMPLETE, RUNNABLE C# code with NO syntax errors.
+Ensure all the healing improvements are preserved while fixing the syntax errors.
+Return ONLY the fixed C# code (no markdown fences, no explanations).
+""";
+
+                var fixRequestBody = new
+                {
+                    model = model,
+                    messages = new[]
+                    {
+                        new { role = "system", content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. Fix syntax errors while preserving healing improvements. Return ONLY executable C# code with NO markdown fences or explanations." },
+                        new { role = "user", content = fixPrompt }
+                    },
+                    temperature = 0.1, // Lower temperature for more deterministic fixing
+                    max_tokens = 2500
+                };
+
+                var fixJson = JsonSerializer.Serialize(fixRequestBody);
+                var fixContent = new StringContent(fixJson, Encoding.UTF8, "application/json");
+
+                var fixResponse = await _httpClient.PostAsync(OpenAIEndpoint, fixContent);
+                if (!fixResponse.IsSuccessStatusCode)
+                {
+                    break; // Stop retrying if API fails
+                }
+
+                var fixResponseContent = await fixResponse.Content.ReadAsStringAsync();
+                var fixJsonResponse = JsonDocument.Parse(fixResponseContent);
+
+                var fixedText = fixJsonResponse.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString() ?? string.Empty;
+
+                // Clean up markdown
+                fixedText = fixedText.Trim();
+                if (fixedText.StartsWith("```csharp"))
+                    fixedText = fixedText.Substring("```csharp".Length);
+                else if (fixedText.StartsWith("```"))
+                    fixedText = fixedText.Substring("```".Length);
+                if (fixedText.EndsWith("```"))
+                    fixedText = fixedText[..^3];
+
+                fixedText = fixedText.Trim();
+
+                // Validate the fixed code
+                var (fixedIsValid, _) = _syntaxValidationService.ValidateSyntaxWithDetails(fixedText);
+                if (fixedIsValid)
+                {
+                    return fixedText; // Return the fixed code
+                }
+
+                generatedText = fixedText; // Update for next retry
+            }
+
+            // If all retries failed, throw an exception with details
+            throw new InvalidOperationException(
+                $"Failed to heal test script with valid C# code after {MaxRetries} attempts. {detailedError}");
+        }
+
+        return generatedText;
     }
 }
