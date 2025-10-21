@@ -182,6 +182,39 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
         prompt.AppendLine("2. Make ONLY INCREMENTAL changes - fix what's broken, keep what works");
         prompt.AppendLine("3. Use SPECIFIC locators - never use generic ones like 'button', 'div', 'input' alone");
         prompt.AppendLine("4. Ensure element TYPE compatibility - buttons to buttons, inputs to inputs");
+        prompt.AppendLine("5. Use CORRECT AriaRole enum values - see list below (case-sensitive!)");
+        prompt.AppendLine();
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("📋 VALID AriaRole ENUM VALUES (Microsoft.Playwright):");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("Common roles:");
+        prompt.AppendLine("  ✓ AriaRole.Button");
+        prompt.AppendLine("  ✓ AriaRole.Textbox     (for text inputs)");
+        prompt.AppendLine("  ✓ AriaRole.Combobox    (NOT ComboBox - lowercase 'box')");
+        prompt.AppendLine("  ✓ AriaRole.Radio       (NOT RadioButton)");
+        prompt.AppendLine("  ✓ AriaRole.Checkbox");
+        prompt.AppendLine("  ✓ AriaRole.Link");
+        prompt.AppendLine("  ✓ AriaRole.Listbox");
+        prompt.AppendLine("  ✓ AriaRole.Option");
+        prompt.AppendLine("  ✓ AriaRole.Searchbox");
+        prompt.AppendLine();
+        prompt.AppendLine("All valid roles (alphabetical):");
+        prompt.AppendLine("Alert, Alertdialog, Application, Article, Banner, Blockquote, Button,");
+        prompt.AppendLine("Caption, Cell, Checkbox, Code, Columnheader, Combobox, Complementary,");
+        prompt.AppendLine("Contentinfo, Definition, Deletion, Dialog, Directory, Document, Emphasis,");
+        prompt.AppendLine("Feed, Figure, Form, Generic, Grid, Gridcell, Group, Heading, Img,");
+        prompt.AppendLine("Insertion, Link, List, Listbox, Listitem, Log, Main, Marquee, Math,");
+        prompt.AppendLine("Meter, Menu, Menubar, Menuitem, Menuitemcheckbox, Menuitemradio,");
+        prompt.AppendLine("Navigation, None, Note, Option, Paragraph, Presentation, Progressbar,");
+        prompt.AppendLine("Radio, Radiogroup, Region, Row, Rowgroup, Rowheader, Scrollbar, Search,");
+        prompt.AppendLine("Searchbox, Separator, Slider, Spinbutton, Status, Strong, Subscript,");
+        prompt.AppendLine("Superscript, Switch, Tab, Table, Tablist, Tabpanel, Term, Textbox,");
+        prompt.AppendLine("Time, Timer, Toolbar, Tooltip, Tree, Treegrid, Treeitem");
+        prompt.AppendLine();
+        prompt.AppendLine("⚠️  CRITICAL: Use exact case - 'Combobox' not 'ComboBox', 'Radio' not 'RadioButton'");
+        prompt.AppendLine("❌ WRONG: AriaRole.ComboBox, AriaRole.RadioButton, AriaRole.TextBox");
+        prompt.AppendLine("✅ RIGHT: AriaRole.Combobox, AriaRole.Radio, AriaRole.Textbox");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         prompt.AppendLine();
         
         // Include healing history to prevent overwriting previous fixes
@@ -329,6 +362,9 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                         "(9) For readonly or disabled elements, you add proper waits with WaitForAsync() and consider using JavaScript evaluation if needed. " +
                         "(10) You add WaitForLoadStateAsync(LoadState.NetworkIdle) after navigation for better stability. " +
                         "(11) You NEVER 'modernize' or 'improve' working locators that are not failing. " +
+                        "(12) CRITICAL: You use CORRECT AriaRole enum values from Microsoft.Playwright: " +
+                        "Use 'Combobox' NOT 'ComboBox', 'Radio' NOT 'RadioButton', 'Textbox' NOT 'TextBox'. " +
+                        "Valid roles include: Button, Textbox, Combobox, Radio, Checkbox, Link, Listbox, Option, Searchbox, etc. " +
                         "Violating these rules will result in your response being rejected. " +
                         "You understand Playwright, Selenium, and modern test automation best practices. " +
                         "Remember: surgical precision is key - fix only what's broken, leave everything else untouched."

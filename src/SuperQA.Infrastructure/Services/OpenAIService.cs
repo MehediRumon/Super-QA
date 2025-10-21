@@ -37,6 +37,13 @@ CRITICAL SELECTOR POLICY:
 - Else use the first provided 'selector' or an 'alternatives' entry
 - DO NOT invent selectors; use only provided values
 - Avoid generic selectors like 'button' or 'input' unless they came from selector list and nothing better exists
+
+⚠️  CRITICAL: USE CORRECT AriaRole ENUM VALUES
+- ✓ AriaRole.Combobox (NOT ComboBox - lowercase 'box')
+- ✓ AriaRole.Radio (NOT RadioButton)
+- ✓ AriaRole.Textbox (NOT TextBox - lowercase 'box')
+- ✓ AriaRole.Checkbox, AriaRole.Button, AriaRole.Link, AriaRole.Listbox, AriaRole.Option, AriaRole.Searchbox
+- See full list: Alert, Alertdialog, Application, Article, Banner, Blockquote, Button, Caption, Cell, Checkbox, Code, Columnheader, Combobox, Complementary, Contentinfo, Definition, Deletion, Dialog, Directory, Document, Emphasis, Feed, Figure, Form, Generic, Grid, Gridcell, Group, Heading, Img, Insertion, Link, List, Listbox, Listitem, Log, Main, Marquee, Math, Meter, Menu, Menubar, Menuitem, Menuitemcheckbox, Menuitemradio, Navigation, None, Note, Option, Paragraph, Presentation, Progressbar, Radio, Radiogroup, Region, Row, Rowgroup, Rowheader, Scrollbar, Search, Searchbox, Separator, Slider, Spinbutton, Status, Strong, Subscript, Superscript, Switch, Tab, Table, Tablist, Tabpanel, Term, Textbox, Time, Timer, Toolbar, Tooltip, Tree, Treegrid, Treeitem
 """;
 
         var prompt = $$"""
@@ -69,6 +76,10 @@ Example selector usage:
 - By placeholder: await Page.Locator("input[placeholder=\"Email\"]").FillAsync("test@example.com");
 - Fallback from provided 'selector': await Page.Locator("CSS_HERE").ClickAsync();
 
+⚠️  CRITICAL ARIOLE VALUES - USE EXACT CASE:
+✅ CORRECT: AriaRole.Combobox, AriaRole.Radio, AriaRole.Textbox, AriaRole.Checkbox
+❌ WRONG: AriaRole.ComboBox, AriaRole.RadioButton, AriaRole.TextBox
+
 IMPORTANT: The generated code MUST compile without errors. Every FillAsync/TypeAsync must have a non-empty string value.
 """;
 
@@ -77,7 +88,7 @@ IMPORTANT: The generated code MUST compile without errors. Every FillAsync/TypeA
             model = model,
             messages = new[]
             {
-                new { role = "system", content = "You are an expert Playwright test automation engineer. Generate COMPLETE, RUNNABLE C# code with NO syntax errors. Use Page.GetByRole when role+name exists; otherwise use provided selectors. Never invent selectors. Always provide test data for input fields - never leave them empty. The code must compile and run without errors." },
+                new { role = "system", content = "You are an expert Playwright test automation engineer. Generate COMPLETE, RUNNABLE C# code with NO syntax errors. Use Page.GetByRole when role+name exists; otherwise use provided selectors. Never invent selectors. Always provide test data for input fields - never leave them empty. The code must compile and run without errors. CRITICAL: Use correct AriaRole enum values: 'Combobox' NOT 'ComboBox', 'Radio' NOT 'RadioButton', 'Textbox' NOT 'TextBox'. Valid roles include: Button, Textbox, Combobox, Radio, Checkbox, Link, Listbox, Option, Searchbox, etc." },
                 new { role = "user", content = prompt }
             },
             temperature = 0.2,
@@ -154,7 +165,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                     model = model,
                     messages = new[]
                     {
-                        new { role = "system", content = "You are an expert Playwright test automation engineer. Generate COMPLETE, RUNNABLE C# code with NO syntax errors. Fix any syntax errors in the code. The code must compile and run without errors." },
+                        new { role = "system", content = "You are an expert Playwright test automation engineer. Generate COMPLETE, RUNNABLE C# code with NO syntax errors. Fix any syntax errors in the code. The code must compile and run without errors. CRITICAL: Use correct AriaRole enum values: 'Combobox' NOT 'ComboBox', 'Radio' NOT 'RadioButton', 'Textbox' NOT 'TextBox'." },
                         new { role = "user", content = fixPrompt }
                     },
                     temperature = 0.1, // Lower temperature for more deterministic fixing
@@ -249,6 +260,11 @@ Example improvements:
 - Add timeout: await element.ClickAsync(new() { Timeout = 10000 });
 - Check visibility: await element.WaitForAsync(new() { State = WaitForSelectorState.Visible });
 
+⚠️  CRITICAL ARIOLE VALUES - USE EXACT CASE:
+✅ CORRECT: AriaRole.Combobox, AriaRole.Radio, AriaRole.Textbox, AriaRole.Checkbox
+❌ WRONG: AriaRole.ComboBox, AriaRole.RadioButton, AriaRole.TextBox
+Valid roles: Button, Textbox, Combobox, Radio, Checkbox, Link, Listbox, Option, Searchbox, etc.
+
 Generate the COMPLETE, IMPROVED test script now:
 """;
 
@@ -257,7 +273,7 @@ Generate the COMPLETE, IMPROVED test script now:
             model = model,
             messages = new[]
             {
-                new { role = "system", content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. Analyze test failures and generate improved, resilient test scripts using Playwright best practices. Return ONLY executable C# code with NO markdown fences or explanations." },
+                new { role = "system", content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. Analyze test failures and generate improved, resilient test scripts using Playwright best practices. Return ONLY executable C# code with NO markdown fences or explanations. CRITICAL: Use correct AriaRole enum values: 'Combobox' NOT 'ComboBox', 'Radio' NOT 'RadioButton', 'Textbox' NOT 'TextBox'. Valid roles include: Button, Textbox, Combobox, Radio, Checkbox, Link, Listbox, Option, Searchbox, etc." },
                 new { role = "user", content = prompt }
             },
             temperature = 0.3,
@@ -342,7 +358,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                     model = model,
                     messages = new[]
                     {
-                        new { role = "system", content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. Fix syntax errors while preserving healing improvements. Return ONLY executable C# code with NO markdown fences or explanations." },
+                        new { role = "system", content = "You are an expert test automation engineer with deep knowledge of self-healing test strategies. Fix syntax errors while preserving healing improvements. Return ONLY executable C# code with NO markdown fences or explanations. CRITICAL: Use correct AriaRole enum values: 'Combobox' NOT 'ComboBox', 'Radio' NOT 'RadioButton', 'Textbox' NOT 'TextBox'." },
                         new { role = "user", content = fixPrompt }
                     },
                     temperature = 0.1, // Lower temperature for more deterministic fixing
