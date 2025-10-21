@@ -16,18 +16,22 @@ public class AITestHealingService : IAITestHealingService
     private readonly HttpClient _httpClient;
     private readonly ILocatorValidationService _validationService;
     private readonly IScriptComparisonService _comparisonService;
+    private readonly ICSharpSyntaxValidationService _syntaxValidationService;
     private const string OpenAIEndpoint = "https://api.openai.com/v1/chat/completions";
+    private const int MaxRetries = 2; // Maximum number of retries for syntax error fixes
 
     public AITestHealingService(
         SuperQADbContext context, 
         HttpClient httpClient,
         ILocatorValidationService validationService,
-        IScriptComparisonService comparisonService)
+        IScriptComparisonService comparisonService,
+        ICSharpSyntaxValidationService syntaxValidationService)
     {
         _context = context;
         _httpClient = httpClient;
         _validationService = validationService;
         _comparisonService = comparisonService;
+        _syntaxValidationService = syntaxValidationService;
     }
 
     public async Task<string> HealTestScriptAsync(int testCaseId, int executionId, string apiKey, string model = "gpt-4")
@@ -66,6 +70,62 @@ public class AITestHealingService : IAITestHealingService
 
         // Call OpenAI to generate the healed script
         var healedScript = await CallOpenAIForHealingAsync(prompt, apiKey, model);
+
+        // First validate C# syntax
+        var (syntaxIsValid, syntaxError) = _syntaxValidationService.ValidateSyntaxWithDetails(healedScript);
+        if (!syntaxIsValid)
+        {
+            // Try to fix syntax errors with retry
+            for (int retry = 0; retry < MaxRetries; retry++)
+            {
+                var fixPrompt = $@"
+The previously healed script has syntax errors. Please fix them and regenerate.
+
+{syntaxError}
+
+PREVIOUS HEALED SCRIPT WITH SYNTAX ERRORS:
+{healedScript}
+
+Generate CORRECTED, COMPLETE, RUNNABLE C# code with NO syntax errors.
+Ensure all the healing improvements are preserved while fixing the syntax errors.
+Return ONLY the fixed C# code (no markdown fences, no explanations).
+";
+                
+                var fixedScript = await CallOpenAIForHealingAsync(fixPrompt, apiKey, model);
+                
+                var (fixedSyntaxIsValid, _) = _syntaxValidationService.ValidateSyntaxWithDetails(fixedScript);
+                if (fixedSyntaxIsValid)
+                {
+                    healedScript = fixedScript;
+                    break;
+                }
+                
+                healedScript = fixedScript; // Update for next retry
+            }
+            
+            // Re-validate after retries
+            var (finalSyntaxIsValid, finalSyntaxError) = _syntaxValidationService.ValidateSyntaxWithDetails(healedScript);
+            if (!finalSyntaxIsValid)
+            {
+                // Log failed healing attempt due to syntax errors
+                var failedHistory = new Core.Entities.HealingHistory
+                {
+                    TestCaseId = testCaseId,
+                    TestExecutionId = executionId,
+                    HealingType = "AI-Healing",
+                    OldScript = testCase.AutomationScript,
+                    NewScript = healedScript,
+                    WasSuccessful = false,
+                    ErrorMessage = $"Syntax validation failed: {finalSyntaxError}",
+                    HealedAt = DateTime.UtcNow
+                };
+                _context.HealingHistories.Add(failedHistory);
+                await _context.SaveChangesAsync();
+                
+                throw new InvalidOperationException(
+                    $"AI healing generated code with syntax errors after {MaxRetries} retry attempts. {finalSyntaxError}");
+            }
+        }
 
         // Validate the healed script to ensure it preserves previously corrected locators
         var validationResult = ValidateHealedScript(testCase, execution, healedScript, healingHistory);

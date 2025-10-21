@@ -25,7 +25,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -57,7 +57,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -88,7 +88,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -130,7 +130,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.GeneratePlaywrightTestScriptAsync(
@@ -172,7 +172,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.GeneratePlaywrightTestScriptAsync(
@@ -225,7 +225,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.GeneratePlaywrightTestScriptAsync(
@@ -249,11 +249,25 @@ public class OpenAIServiceTests
         // Arrange
         var capturedRequest = string.Empty;
         var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        var validCSharpCode = @"using Microsoft.Playwright;
+using NUnit.Framework;
+
+namespace Tests
+{
+    public class MyTest
+    {
+        [Test]
+        public async Task TestMethod()
+        {
+            // Test code
+        }
+    }
+}";
         var responseContent = @"{
             ""choices"": [
                 {
                     ""message"": {
-                        ""content"": ""test script""
+                        ""content"": """ + validCSharpCode.Replace("\"", "\\\"").Replace("\n", "\\n") + @"""
                     }
                 }
             ]
@@ -276,7 +290,7 @@ public class OpenAIServiceTests
             });
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-        var service = new OpenAIService(httpClient);
+        var service = new OpenAIService(httpClient, new CSharpSyntaxValidationService());
 
         // Act
         await service.GeneratePlaywrightTestScriptAsync(

@@ -52,7 +52,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient();
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -82,7 +82,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient();
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -123,7 +123,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient();
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -190,7 +190,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -247,7 +247,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -302,7 +302,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -368,7 +368,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -441,7 +441,7 @@ public class AITestHealingServiceTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -520,7 +520,7 @@ Call log:
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -610,7 +610,7 @@ Call log:
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");

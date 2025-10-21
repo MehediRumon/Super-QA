@@ -119,7 +119,7 @@ public class AIHealingImprovementsTests
             });
         var comparisonService = comparisonMock.Object;
         
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -188,7 +188,7 @@ public class AIHealingImprovementsTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -260,7 +260,7 @@ public class AIHealingImprovementsTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -325,7 +325,7 @@ public class AIHealingImprovementsTests
         // Configure validation service to detect the mismatch (select vs button)
         var validationService = CreateMockValidationService(isValid: true, hasMismatch: true);
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -391,7 +391,7 @@ public class AIHealingImprovementsTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -464,7 +464,7 @@ public class AIHealingImprovementsTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");

@@ -113,7 +113,7 @@ public class AIHealingValidationTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -182,7 +182,7 @@ public class AIHealingValidationTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -247,7 +247,7 @@ public class AIHealingValidationTests
         // Configure validation service to detect mismatch
         var validationService = CreateMockValidationService(isValid: true, hasMismatch: true);
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -309,7 +309,7 @@ public class AIHealingValidationTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
@@ -403,7 +403,7 @@ public class AIHealingValidationTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -479,7 +479,7 @@ public class AIHealingValidationTests
         var httpClient = new HttpClient(mockHttpMessageHandler.Object);
         var validationService = CreateMockValidationService();
         var comparisonService = CreateMockComparisonService();
-        var service = new AITestHealingService(context, httpClient, validationService, comparisonService);
+        var service = new AITestHealingService(context, httpClient, validationService, comparisonService, new CSharpSyntaxValidationService());
 
         // Act - Should succeed because the removed locator was mentioned in the error
         var result = await service.HealTestScriptAsync(1, 1, "test-api-key", "gpt-4");
