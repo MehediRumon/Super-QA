@@ -446,15 +446,37 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
         var lines = originalScript.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
         // Find and replace the failing line
+        bool replaced = false;
         for (int i = 0; i < lines.Length; i++)
         {
-            if (lines[i].Trim() == failingContext.FailingLine)
+            var trimmedLine = lines[i].Trim();
+            
+            // Match the line, ignoring comments
+            var lineWithoutComment = trimmedLine.Contains("//") 
+                ? trimmedLine.Substring(0, trimmedLine.IndexOf("//")).Trim()
+                : trimmedLine;
+            
+            var failingLineWithoutComment = failingContext.FailingLine.Contains("//")
+                ? failingContext.FailingLine.Substring(0, failingContext.FailingLine.IndexOf("//")).Trim()
+                : failingContext.FailingLine;
+            
+            if (lineWithoutComment == failingLineWithoutComment || 
+                trimmedLine == failingContext.FailingLine ||
+                trimmedLine.Contains(failingContext.FailingLocator))
             {
                 // Preserve the indentation of the original line
                 var indentation = GetIndentation(lines[i]);
                 lines[i] = indentation + healedLine;
+                replaced = true;
                 break;
             }
+        }
+
+        // If we couldn't replace the line, return the original script
+        // This will cause a fallback to full healing
+        if (!replaced)
+        {
+            return originalScript;
         }
 
         return string.Join(Environment.NewLine, lines);
