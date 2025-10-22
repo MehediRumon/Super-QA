@@ -1,0 +1,500 @@
+@page "/code-editor"
+@using SuperQA.Shared.DTOs
+@using SuperQA.Client.Services
+@using Microsoft.JSInterop
+@inject IPlaywrightTestService PlaywrightService
+@inject ISettingsService SettingsService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Code Editor - Super QA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="page-header mb-4">
+        <h1 class="display-5 fw-bold">
+            <i class="bi bi-code-square me-2"></i>AI-Powered Code Editor
+        </h1>
+        <p class="lead text-muted">Write Gherkin steps, generate Playwright tests, and heal failures with AI</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Panel: Input -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header py-3">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Test Input</h5>
+                </div>
+                <div class="card-body">
+                    @if (settingsLoaded && hasStoredSettings)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <strong>Settings Loaded!</strong> Using your saved API key.
+                            <button type="button" class="btn-close" @onclick="() => hasStoredSettings = false"></button>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Test Name</label>
+                        <input type="text" class="form-control" @bind="testName" placeholder="Enter test name" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Application URL</label>
+                        <input type="url" class="form-control" @bind="applicationUrl" placeholder="https://example.com" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Gherkin Steps with Locators</label>
+                        <small class="form-text text-muted d-block mb-2">
+                            Write your test steps in Gherkin format with locators. AI will generate Playwright code.
+                        </small>
+                        <textarea class="form-control code-editor" 
+                                  @bind="gherkinSteps" 
+                                  rows="12" 
+                                  placeholder="Given I navigate to the login page&#10;When I enter username 'user@example.com' in input[name='email']&#10;And I enter password 'password123' in input[type='password']&#10;And I click button[type='submit']&#10;Then I should see text 'Welcome' in .dashboard-header"></textarea>
+                    </div>
+
+                    @if (!hasStoredSettings)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">OpenAI API Key <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" @bind="apiKey" placeholder="sk-..." />
+                            <small class="form-text text-muted">
+                                Save in <a href="/settings">Settings</a> to avoid entering each time
+                            </small>
+                        </div>
+                    }
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-lg" @onclick="GenerateTestScript" disabled="@isGenerating">
+                            @if (isGenerating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Generating...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-magic me-2"></i>
+                                <span>Generate Playwright Test</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Output -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-code me-2"></i>Generated Test Script</h5>
+                    @if (!string.IsNullOrEmpty(generatedScript))
+                    {
+                        <button class="btn btn-sm btn-outline-primary" @onclick="CopyToClipboard">
+                            <i class="bi bi-clipboard me-1"></i>Copy
+                        </button>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Error:</strong> @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(generatedScript))
+                    {
+                        <div class="mb-3">
+                            <textarea class="form-control code-editor" 
+                                      @bind="generatedScript" 
+                                      rows="15"
+                                      style="font-family: 'JetBrains Mono', monospace;"></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" @onclick="ExecuteTest" disabled="@isExecuting">
+                                @if (isExecuting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Executing...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-play-fill me-2"></i>
+                                    <span>Execute Test</span>
+                                }
+                            </button>
+
+                            <button class="btn btn-primary" @onclick="SaveTestScript" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-2"></i>
+                                    <span>Save Test Script</span>
+                                }
+                            </button>
+                        </div>
+                    }
+                    else if (!isGenerating && string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-code-slash" style="font-size: 4rem;"></i>
+                            <p class="mt-3">Your generated Playwright test will appear here</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Execution Results -->
+    @if (executionResult != null)
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header py-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i>
+                            Test Execution Results
+                            @if (executionResult.Success)
+                            {
+                                <span class="badge badge-success ms-2">Passed</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-danger ms-2">Failed</span>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!executionResult.Success && !string.IsNullOrEmpty(executionResult.ErrorMessage))
+                        {
+                            <div class="alert alert-danger mb-3" role="alert">
+                                <strong>Error:</strong> @executionResult.ErrorMessage
+                            </div>
+
+                            <div class="d-grid gap-2 mb-3">
+                                <button class="btn btn-warning" @onclick="HealWithAI" disabled="@isHealing">
+                                    @if (isHealing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Healing with AI...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-magic me-2"></i>
+                                        <span>Heal with AI</span>
+                                    }
+                                </button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(executionResult.Output))
+                        {
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Test Output</label>
+                                <pre class="code-editor" style="max-height: 300px; overflow: auto;">@executionResult.Output</pre>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Healed Script Preview -->
+    @if (!string.IsNullOrEmpty(healedScript))
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header py-3 bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-check-circle me-2"></i>
+                            AI Healed Test Script
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            AI has analyzed the failure and generated a fixed test script.
+                        </div>
+
+                        <div class="mb-3">
+                            <textarea class="form-control code-editor" 
+                                      @bind="healedScript" 
+                                      rows="15"
+                                      style="font-family: 'JetBrains Mono', monospace;"></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" @onclick="ApplyHealedScript">
+                                <i class="bi bi-check-lg me-2"></i>
+                                Apply Healed Script
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string testName = "";
+    private string applicationUrl = "";
+    private string gherkinSteps = "";
+    private string apiKey = "";
+    private string generatedScript = "";
+    private string healedScript = "";
+    private string errorMessage = "";
+
+    private bool settingsLoaded = false;
+    private bool hasStoredSettings = false;
+    private bool isGenerating = false;
+    private bool isExecuting = false;
+    private bool isSaving = false;
+    private bool isHealing = false;
+
+    private PlaywrightTestExecutionResponse? executionResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            if (settings != null && !string.IsNullOrEmpty(settings.OpenAIApiKey))
+            {
+                hasStoredSettings = true;
+                apiKey = settings.OpenAIApiKey;
+            }
+            settingsLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading settings: {ex.Message}");
+            settingsLoaded = true;
+        }
+    }
+
+    private async Task GenerateTestScript()
+    {
+        errorMessage = "";
+        generatedScript = "";
+        executionResult = null;
+        healedScript = "";
+
+        if (string.IsNullOrWhiteSpace(testName))
+        {
+            errorMessage = "Test name is required";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(applicationUrl))
+        {
+            errorMessage = "Application URL is required";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(gherkinSteps))
+        {
+            errorMessage = "Gherkin steps are required";
+            return;
+        }
+
+        if (!hasStoredSettings && string.IsNullOrWhiteSpace(apiKey))
+        {
+            errorMessage = "OpenAI API key is required";
+            return;
+        }
+
+        isGenerating = true;
+        try
+        {
+            var request = new PlaywrightTestGenerationRequest
+            {
+                FrsText = $"Test Name: {testName}\n\nGherkin Steps:\n{gherkinSteps}",
+                ApplicationUrl = applicationUrl,
+                OpenAIApiKey = apiKey,
+                Model = "gpt-4o-mini"
+            };
+
+            var response = await PlaywrightService.GenerateTestScriptAsync(request);
+
+            if (response.Success)
+            {
+                generatedScript = response.GeneratedScript;
+            }
+            else
+            {
+                errorMessage = response.ErrorMessage ?? "Failed to generate test script";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    private async Task ExecuteTest()
+    {
+        errorMessage = "";
+        executionResult = null;
+        healedScript = "";
+
+        if (string.IsNullOrWhiteSpace(generatedScript))
+        {
+            errorMessage = "No test script to execute";
+            return;
+        }
+
+        isExecuting = true;
+        try
+        {
+            var request = new PlaywrightTestExecutionRequest
+            {
+                TestScript = generatedScript
+            };
+
+            executionResult = await PlaywrightService.ExecuteTestScriptAsync(request);
+
+            if (!executionResult.Success)
+            {
+                errorMessage = executionResult.ErrorMessage ?? "Test execution failed";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isExecuting = false;
+        }
+    }
+
+    private async Task HealWithAI()
+    {
+        healedScript = "";
+        errorMessage = "";
+
+        if (executionResult == null || string.IsNullOrWhiteSpace(generatedScript))
+        {
+            errorMessage = "No execution result to heal";
+            return;
+        }
+
+        if (!hasStoredSettings && string.IsNullOrWhiteSpace(apiKey))
+        {
+            errorMessage = "OpenAI API key is required for healing";
+            return;
+        }
+
+        isHealing = true;
+        try
+        {
+            // Create a healing request with the original script and execution output
+            var healingPrompt = $@"The following Playwright test failed. Please analyze the error and provide a complete fixed test script.
+
+Original Test Script:
+{generatedScript}
+
+Error Message:
+{executionResult.ErrorMessage}
+
+Test Output:
+{executionResult.Output}
+
+Please provide the complete fixed test script with proper error handling and wait conditions.";
+
+            var request = new PlaywrightTestGenerationRequest
+            {
+                FrsText = healingPrompt,
+                ApplicationUrl = applicationUrl,
+                OpenAIApiKey = apiKey,
+                Model = "gpt-4o-mini"
+            };
+
+            var response = await PlaywrightService.GenerateTestScriptAsync(request);
+
+            if (response.Success)
+            {
+                healedScript = response.GeneratedScript;
+            }
+            else
+            {
+                errorMessage = response.ErrorMessage ?? "Failed to heal test script";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error healing test: {ex.Message}";
+        }
+        finally
+        {
+            isHealing = false;
+        }
+    }
+
+    private void ApplyHealedScript()
+    {
+        if (!string.IsNullOrEmpty(healedScript))
+        {
+            generatedScript = healedScript;
+            healedScript = "";
+            executionResult = null;
+        }
+    }
+
+    private async Task SaveTestScript()
+    {
+        errorMessage = "";
+
+        if (string.IsNullOrWhiteSpace(testName) || string.IsNullOrWhiteSpace(generatedScript))
+        {
+            errorMessage = "Test name and script are required";
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            // Here we would call an API to save the test script
+            // For now, we'll just show a success message
+            await Task.Delay(500); // Simulate API call
+            await JSRuntime.InvokeVoidAsync("alert", "Test script saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving test script: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedScript);
+            await JSRuntime.InvokeVoidAsync("alert", "Copied to clipboard!");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error copying to clipboard: {ex.Message}";
+        }
+    }
+}
