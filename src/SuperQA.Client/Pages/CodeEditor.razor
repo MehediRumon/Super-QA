@@ -4,6 +4,7 @@
 @using Microsoft.JSInterop
 @inject IPlaywrightTestService PlaywrightService
 @inject ISettingsService SettingsService
+@inject ICodeEditorService CodeEditorService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Code Editor - Super QA</PageTitle>
@@ -470,10 +471,24 @@ Please provide the complete fixed test script with proper error handling and wai
         isSaving = true;
         try
         {
-            // Here we would call an API to save the test script
-            // For now, we'll just show a success message
-            await Task.Delay(500); // Simulate API call
-            await JSRuntime.InvokeVoidAsync("alert", "Test script saved successfully!");
+            var request = new SaveCodeEditorScriptRequest
+            {
+                TestName = testName,
+                ApplicationUrl = applicationUrl,
+                GherkinSteps = gherkinSteps,
+                GeneratedScript = generatedScript
+            };
+
+            var response = await CodeEditorService.SaveScriptAsync(request);
+
+            if (response.Success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Test script saved successfully!");
+            }
+            else
+            {
+                errorMessage = response.ErrorMessage ?? "Failed to save test script";
+            }
         }
         catch (Exception ex)
         {

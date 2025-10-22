@@ -18,6 +18,7 @@ public class SuperQADbContext : DbContext
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
     public DbSet<ExtensionTestData> ExtensionTestData => Set<ExtensionTestData>();
     public DbSet<HealingHistory> HealingHistories => Set<HealingHistory>();
+    public DbSet<CodeEditorScript> CodeEditorScripts => Set<CodeEditorScript>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -128,6 +129,15 @@ public class SuperQADbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.TestExecutionId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<CodeEditorScript>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TestName).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.ApplicationUrl).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.GherkinSteps).IsRequired();
+            entity.Property(e => e.GeneratedScript).IsRequired();
         });
     }
 }
