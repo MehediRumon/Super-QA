@@ -59,9 +59,10 @@ public class AITestHealingService : IAITestHealingService
         }
 
         // Get healing history to avoid overwriting previously corrected locators
+        // Only consider healings that were actually applied to the test case
         var healingHistory = await _context.HealingHistories
-            .Where(h => h.TestCaseId == testCaseId && h.WasSuccessful)
-            .OrderByDescending(h => h.HealedAt)
+            .Where(h => h.TestCaseId == testCaseId && h.WasSuccessful && h.WasApplied)
+            .OrderByDescending(h => h.AppliedAt ?? h.HealedAt)
             .Take(10)
             .ToListAsync();
 
@@ -135,6 +136,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                     OldScript = testCase.AutomationScript,
                     NewScript = healedScript,
                     WasSuccessful = false,
+                    WasApplied = false,
                     ErrorMessage = $"Syntax validation failed: {finalSyntaxError}",
                     HealedAt = DateTime.UtcNow
                 };
@@ -160,6 +162,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                 OldScript = testCase.AutomationScript,
                 NewScript = healedScript,
                 WasSuccessful = false,
+                WasApplied = false,
                 ErrorMessage = validationResult.ErrorMessage,
                 HealedAt = DateTime.UtcNow
             };
@@ -173,6 +176,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
         }
 
         // Store successful healing history
+        // Note: WasApplied is false until user actually applies this healed script
         var history = new Core.Entities.HealingHistory
         {
             TestCaseId = testCaseId,
@@ -181,6 +185,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
             OldScript = testCase.AutomationScript,
             NewScript = healedScript,
             WasSuccessful = true,
+            WasApplied = false, // Will be set to true when user applies the healed script
             HealedAt = DateTime.UtcNow
         };
         _context.HealingHistories.Add(history);
@@ -248,6 +253,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
             }
 
             // Store successful targeted healing history
+            // Note: WasApplied is false until user actually applies this healed script
             var history = new Core.Entities.HealingHistory
             {
                 TestCaseId = testCase.Id,
@@ -258,6 +264,7 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
                 OldLocator = failingContext.FailingLine,
                 NewLocator = healedLine.Trim(),
                 WasSuccessful = true,
+                WasApplied = false, // Will be set to true when user applies the healed script
                 HealedAt = DateTime.UtcNow
             };
             _context.HealingHistories.Add(history);

@@ -14,7 +14,9 @@ public class HealingHistory
     public string? OldScript { get; set; }
     public string? NewScript { get; set; }
     public bool WasSuccessful { get; set; }
+    public bool WasApplied { get; set; } // True only when user actually applies the healed script to the test case
     public DateTime HealedAt { get; set; }
+    public DateTime? AppliedAt { get; set; } // When the healed script was applied to the test case
     public string? ErrorMessage { get; set; }
     
     public TestCase TestCase { get; set; } = null!;

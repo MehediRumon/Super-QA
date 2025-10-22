@@ -260,7 +260,7 @@ public class TestExecutionService : ITestExecutionService
         return await _context.TestCases.FindAsync(testCaseId);
     }
 
-    public async Task UpdateTestCaseAutomationScriptAsync(int testCaseId, string healedScript)
+    public async Task UpdateTestCaseAutomationScriptAsync(int testCaseId, string healedScript, int? executionId = null)
     {
         var testCase = await _context.TestCases.FindAsync(testCaseId);
         if (testCase == null)
@@ -270,6 +270,27 @@ public class TestExecutionService : ITestExecutionService
 
         testCase.AutomationScript = healedScript;
         testCase.UpdatedAt = DateTime.UtcNow;
+        
+        // Mark the healing history as applied if executionId is provided
+        if (executionId.HasValue)
+        {
+            // Find the most recent successful healing for this test case and execution
+            var healingHistory = await _context.HealingHistories
+                .Where(h => h.TestCaseId == testCaseId && 
+                           h.TestExecutionId == executionId.Value && 
+                           h.WasSuccessful && 
+                           !h.WasApplied &&
+                           h.NewScript == healedScript)
+                .OrderByDescending(h => h.HealedAt)
+                .FirstOrDefaultAsync();
+            
+            if (healingHistory != null)
+            {
+                healingHistory.WasApplied = true;
+                healingHistory.AppliedAt = DateTime.UtcNow;
+            }
+        }
+        
         await _context.SaveChangesAsync();
     }
 }

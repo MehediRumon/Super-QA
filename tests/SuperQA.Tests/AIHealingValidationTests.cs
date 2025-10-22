@@ -84,7 +84,9 @@ public class AIHealingValidationTests
             OldLocator = "#submit-btn",
             NewLocator = "[data-testid='submit']",
             WasSuccessful = true,
-            HealedAt = DateTime.UtcNow.AddDays(-1)
+            WasApplied = true, // User applied this healing
+            HealedAt = DateTime.UtcNow.AddDays(-1),
+            AppliedAt = DateTime.UtcNow.AddDays(-1)
         };
 
         context.Projects.Add(project);
@@ -363,7 +365,9 @@ public class AIHealingValidationTests
             OldLocator = "#submit-btn",
             NewLocator = "[data-testid='submit']",
             WasSuccessful = true,
-            HealedAt = DateTime.UtcNow.AddDays(-2)
+            WasApplied = true, // User applied this healing
+            HealedAt = DateTime.UtcNow.AddDays(-2),
+            AppliedAt = DateTime.UtcNow.AddDays(-2)
         };
         var healingHistory2 = new HealingHistory
         {
@@ -373,7 +377,9 @@ public class AIHealingValidationTests
             OldLocator = "#cancel-btn",
             NewLocator = "[data-testid='cancel']",
             WasSuccessful = true,
-            HealedAt = DateTime.UtcNow.AddDays(-1)
+            WasApplied = true, // User applied this healing
+            HealedAt = DateTime.UtcNow.AddDays(-1),
+            AppliedAt = DateTime.UtcNow.AddDays(-1)
         };
 
         context.Projects.Add(project);
@@ -450,7 +456,9 @@ public class AIHealingValidationTests
             OldLocator = "#submit-btn",
             NewLocator = "[data-testid='submit']",
             WasSuccessful = true,
-            HealedAt = DateTime.UtcNow.AddDays(-1)
+            WasApplied = true, // User applied this healing
+            HealedAt = DateTime.UtcNow.AddDays(-1),
+            AppliedAt = DateTime.UtcNow.AddDays(-1)
         };
 
         context.Projects.Add(project);

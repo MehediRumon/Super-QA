@@ -127,7 +127,10 @@ public class TestExecutionsController : ControllerBase
                 });
             }
 
-            await _testExecutionService.UpdateTestCaseAutomationScriptAsync(request.TestCaseId, request.HealedScript);
+            await _testExecutionService.UpdateTestCaseAutomationScriptAsync(
+                request.TestCaseId, 
+                request.HealedScript,
+                request.ExecutionId); // Pass execution ID to mark healing as applied
 
             return Ok(new ApplyHealedScriptResponse
             {
