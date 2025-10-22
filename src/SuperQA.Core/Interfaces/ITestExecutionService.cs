@@ -6,5 +6,5 @@ public interface ITestExecutionService
     Task<IEnumerable<object>> GetTestExecutionsAsync(int projectId);
     Task<object?> GetTestExecutionAsync(int executionId);
     Task<Entities.TestCase?> GetTestCaseAsync(int testCaseId);
-    Task UpdateTestCaseAutomationScriptAsync(int testCaseId, string healedScript);
+    Task UpdateTestCaseAutomationScriptAsync(int testCaseId, string healedScript, int? executionId = null);
 }

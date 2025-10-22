@@ -37,6 +37,7 @@ public class HealTestResponse
 public class ApplyHealedScriptRequest
 {
     public int TestCaseId { get; set; }
+    public int ExecutionId { get; set; } // The execution that triggered the healing
     public string HealedScript { get; set; } = string.Empty;
 }
 
