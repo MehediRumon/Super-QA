@@ -65,7 +65,14 @@ public class AITestHealingService : IAITestHealingService
             .Take(10)
             .ToListAsync();
 
-        // Build a comprehensive prompt for AI healing
+        // Try targeted healing first (only fix the failing line)
+        var targetedResult = await TryTargetedHealingAsync(testCase, execution, healingHistory, apiKey, model);
+        if (targetedResult.Success)
+        {
+            return targetedResult.HealedScript;
+        }
+
+        // Fall back to full script healing if targeted healing is not applicable
         var prompt = BuildHealingPrompt(testCase, execution, healingHistory);
 
         // Call OpenAI to generate the healed script
@@ -180,6 +187,299 @@ Return ONLY the fixed C# code (no markdown fences, no explanations).
         await _context.SaveChangesAsync();
 
         return healedScript;
+    }
+
+    /// <summary>
+    /// Attempts targeted healing by identifying and fixing only the specific failing line(s)
+    /// This approach is more token-efficient and prevents over-correction
+    /// </summary>
+    private async Task<(bool Success, string HealedScript)> TryTargetedHealingAsync(
+        Core.Entities.TestCase testCase,
+        Core.Entities.TestExecution execution,
+        List<Core.Entities.HealingHistory> healingHistory,
+        string apiKey,
+        string model)
+    {
+        // Only attempt targeted healing if we have both a script and error information
+        if (string.IsNullOrWhiteSpace(testCase.AutomationScript) || 
+            string.IsNullOrWhiteSpace(execution.ErrorMessage))
+        {
+            return (false, string.Empty);
+        }
+
+        // Extract the failing line number and context from the error
+        var failingContext = ExtractFailingContext(execution.ErrorMessage, execution.StackTrace, testCase.AutomationScript);
+        if (failingContext == null)
+        {
+            return (false, string.Empty);
+        }
+
+        // Build a focused prompt for just the failing line
+        var targetedPrompt = BuildTargetedHealingPrompt(
+            testCase,
+            execution,
+            failingContext,
+            healingHistory);
+
+        try
+        {
+            // Get AI suggestion for just the failing line
+            var healedLine = await CallOpenAIForHealingAsync(targetedPrompt, apiKey, model);
+
+            // Replace the failing line in the original script
+            var healedScript = ReplaceFailingLine(
+                testCase.AutomationScript,
+                failingContext,
+                healedLine);
+
+            // Validate the healed script
+            var (syntaxIsValid, syntaxError) = _syntaxValidationService.ValidateSyntaxWithDetails(healedScript);
+            if (!syntaxIsValid)
+            {
+                // Syntax error in targeted healing, fall back to full healing
+                return (false, string.Empty);
+            }
+
+            var validationResult = ValidateHealedScript(testCase, execution, healedScript, healingHistory);
+            if (!validationResult.IsValid)
+            {
+                // Validation failed, fall back to full healing
+                return (false, string.Empty);
+            }
+
+            // Store successful targeted healing history
+            var history = new Core.Entities.HealingHistory
+            {
+                TestCaseId = testCase.Id,
+                TestExecutionId = execution.Id,
+                HealingType = "AI-Targeted-Healing",
+                OldScript = testCase.AutomationScript,
+                NewScript = healedScript,
+                OldLocator = failingContext.FailingLine,
+                NewLocator = healedLine.Trim(),
+                WasSuccessful = true,
+                HealedAt = DateTime.UtcNow
+            };
+            _context.HealingHistories.Add(history);
+            await _context.SaveChangesAsync();
+
+            return (true, healedScript);
+        }
+        catch
+        {
+            // If targeted healing fails for any reason, fall back to full healing
+            return (false, string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Extracts context about the failing line from error messages
+    /// </summary>
+    private FailingContext? ExtractFailingContext(string errorMessage, string? stackTrace, string script)
+    {
+        // Look for line numbers in the error message or stack trace
+        var lineNumberMatch = System.Text.RegularExpressions.Regex.Match(
+            stackTrace ?? errorMessage,
+            @"\.cs:line (\d+)");
+
+        // Try to extract the failing locator from error message first
+        var locatorInError = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"Locator\([""']([^""']+)[""']\)");
+
+        var failingLocator = locatorInError.Success ? locatorInError.Groups[1].Value : string.Empty;
+
+        if (!lineNumberMatch.Success)
+        {
+            // No line number in stack trace, try to find by locator
+            if (!string.IsNullOrEmpty(failingLocator))
+            {
+                // Find the line containing this locator in the script
+                var lines = script.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (lines[i].Contains(failingLocator))
+                    {
+                        return new FailingContext
+                        {
+                            LineNumber = i + 1,
+                            FailingLine = lines[i].Trim(),
+                            FailingLocator = failingLocator,
+                            ErrorMessage = errorMessage,
+                            ContextBefore = i > 0 ? lines[i - 1].Trim() : string.Empty,
+                            ContextAfter = i < lines.Length - 1 ? lines[i + 1].Trim() : string.Empty
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        var lineNumber = int.Parse(lineNumberMatch.Groups[1].Value);
+        var scriptLines = script.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+        // Find the actual failing line in the test method
+        // The line number from stack trace may include class/namespace declarations
+        // So we need to find the corresponding line in the test method
+        var failingLine = string.Empty;
+        var contextBefore = string.Empty;
+        var contextAfter = string.Empty;
+
+        // Find the line with the failing locator
+        for (int i = 0; i < scriptLines.Length; i++)
+        {
+            if (!string.IsNullOrEmpty(failingLocator) && scriptLines[i].Contains(failingLocator))
+            {
+                failingLine = scriptLines[i].Trim();
+                contextBefore = i > 0 ? scriptLines[i - 1].Trim() : string.Empty;
+                contextAfter = i < scriptLines.Length - 1 ? scriptLines[i + 1].Trim() : string.Empty;
+                
+                return new FailingContext
+                {
+                    LineNumber = i + 1,
+                    FailingLine = failingLine,
+                    FailingLocator = failingLocator,
+                    ErrorMessage = errorMessage,
+                    ContextBefore = contextBefore,
+                    ContextAfter = contextAfter
+                };
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Builds a focused prompt for healing just the failing line
+    /// </summary>
+    private string BuildTargetedHealingPrompt(
+        Core.Entities.TestCase testCase,
+        Core.Entities.TestExecution execution,
+        FailingContext failingContext,
+        List<Core.Entities.HealingHistory> healingHistory)
+    {
+        var prompt = new StringBuilder();
+
+        prompt.AppendLine("You are an expert test automation engineer. A single line in a test script is failing.");
+        prompt.AppendLine("Your task: FIX ONLY THIS ONE LINE. Return ONLY the fixed line of code, nothing else.");
+        prompt.AppendLine();
+        prompt.AppendLine("⚠️  CRITICAL RULES:");
+        prompt.AppendLine("1. Return ONLY the fixed line of C# code");
+        prompt.AppendLine("2. Do NOT include line numbers, comments, or explanations");
+        prompt.AppendLine("3. Do NOT rewrite other parts of the script");
+        prompt.AppendLine("4. Use specific locators - never generic 'button', 'div', 'input' alone");
+        prompt.AppendLine("5. For strict mode violations (multiple elements), add .First() or use more specific selector");
+        prompt.AppendLine("6. Ensure element type compatibility (button → button, input → input)");
+        prompt.AppendLine();
+        
+        if (healingHistory.Any())
+        {
+            prompt.AppendLine("🔒 PROTECTED LOCATORS (do not change these if they appear):");
+            foreach (var history in healingHistory.Where(h => !string.IsNullOrWhiteSpace(h.NewLocator)))
+            {
+                prompt.AppendLine($"   - {history.NewLocator}");
+            }
+            prompt.AppendLine();
+        }
+
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("❌ FAILING LINE:");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        if (!string.IsNullOrEmpty(failingContext.ContextBefore))
+        {
+            prompt.AppendLine($"    {failingContext.ContextBefore}  // Previous line for context");
+        }
+        prompt.AppendLine($">>> {failingContext.FailingLine}  // ❌ THIS LINE FAILS");
+        if (!string.IsNullOrEmpty(failingContext.ContextAfter))
+        {
+            prompt.AppendLine($"    {failingContext.ContextAfter}  // Next line for context");
+        }
+        prompt.AppendLine();
+        
+        prompt.AppendLine("ERROR:");
+        prompt.AppendLine(failingContext.ErrorMessage);
+        prompt.AppendLine();
+
+        if (!string.IsNullOrEmpty(failingContext.FailingLocator))
+        {
+            prompt.AppendLine($"FAILING LOCATOR: {failingContext.FailingLocator}");
+            prompt.AppendLine();
+        }
+
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("🔧 COMMON FIXES:");
+        prompt.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        prompt.AppendLine("• Strict mode violation (2+ elements): Add .First() or .Last() or use more specific selector");
+        prompt.AppendLine("• Element not found: Try alternative selectors (role+name, data-testid, id)");
+        prompt.AppendLine("• Timeout: Add explicit wait before action");
+        prompt.AppendLine("• Readonly/disabled: Add WaitForAsync() or use EvaluateAsync()");
+        prompt.AppendLine("• Radio buttons: Specify value with filter like Locator(\"...\").Filter(new() { HasText = \"value\" }).First()");
+        prompt.AppendLine();
+        
+        prompt.AppendLine("OUTPUT FORMAT:");
+        prompt.AppendLine("Return ONLY the fixed C# code line. Example:");
+        prompt.AppendLine("await Page.Locator(\"//input[@name='PreCheckSetting.Enable'][@value='true']\").ClickAsync();");
+        prompt.AppendLine();
+        prompt.AppendLine("Do NOT include markdown, explanations, or multiple lines.");
+
+        return prompt.ToString();
+    }
+
+    /// <summary>
+    /// Replaces the failing line in the script with the healed version
+    /// </summary>
+    private string ReplaceFailingLine(string originalScript, FailingContext failingContext, string healedLine)
+    {
+        // Clean up the healed line
+        healedLine = healedLine.Trim();
+        
+        // Remove any markdown code fences if present
+        if (healedLine.StartsWith("```csharp"))
+            healedLine = healedLine.Substring("```csharp".Length).Trim();
+        else if (healedLine.StartsWith("```"))
+            healedLine = healedLine.Substring("```".Length).Trim();
+        if (healedLine.EndsWith("```"))
+            healedLine = healedLine[..^3].Trim();
+
+        // Split the script into lines
+        var lines = originalScript.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+        // Find and replace the failing line
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Trim() == failingContext.FailingLine)
+            {
+                // Preserve the indentation of the original line
+                var indentation = GetIndentation(lines[i]);
+                lines[i] = indentation + healedLine;
+                break;
+            }
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>
+    /// Gets the leading whitespace (indentation) from a line
+    /// </summary>
+    private string GetIndentation(string line)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(line, @"^(\s*)");
+        return match.Success ? match.Groups[1].Value : string.Empty;
+    }
+
+    /// <summary>
+    /// Context information about a failing line
+    /// </summary>
+    private class FailingContext
+    {
+        public int LineNumber { get; set; }
+        public string FailingLine { get; set; } = string.Empty;
+        public string FailingLocator { get; set; } = string.Empty;
+        public string ErrorMessage { get; set; } = string.Empty;
+        public string ContextBefore { get; set; } = string.Empty;
+        public string ContextAfter { get; set; } = string.Empty;
     }
 
     private string BuildHealingPrompt(Core.Entities.TestCase testCase, Core.Entities.TestExecution execution, List<Core.Entities.HealingHistory> healingHistory)
