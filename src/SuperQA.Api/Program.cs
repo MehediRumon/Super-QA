@@ -50,10 +50,16 @@ builder.Services.AddHttpClient<IMCPService, MCPService>();
 builder.Services.AddScoped<IAITestGeneratorService, AITestGeneratorService>();
 builder.Services.AddScoped<ITestExecutionService, TestExecutionService>();
 builder.Services.AddSingleton<IBackgroundTestRunner, BackgroundTestRunnerService>();
-builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
+builder.Services.AddHttpClient<IOpenAIService, OpenAIService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(120); // 120 seconds timeout for OpenAI API calls
+});
 builder.Services.AddScoped<IPlaywrightTestExecutor, PlaywrightTestExecutor>();
 builder.Services.AddScoped<IUserSettingsService, UserSettingsService>();
-builder.Services.AddHttpClient<IAITestHealingService, AITestHealingService>();
+builder.Services.AddHttpClient<IAITestHealingService, AITestHealingService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(120); // 120 seconds timeout for OpenAI API calls
+});
 builder.Services.AddScoped<ILocatorValidationService, LocatorValidationService>();
 builder.Services.AddScoped<IScriptComparisonService, ScriptComparisonService>();
 builder.Services.AddScoped<ICSharpSyntaxValidationService, CSharpSyntaxValidationService>();

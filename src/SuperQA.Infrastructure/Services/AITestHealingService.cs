@@ -91,16 +91,28 @@ Ensure all the healing improvements are preserved while fixing the syntax errors
 Return ONLY the fixed C# code (no markdown fences, no explanations).
 ";
                 
-                var fixedScript = await CallOpenAIForHealingAsync(fixPrompt, apiKey, model);
-                
-                var (fixedSyntaxIsValid, _) = _syntaxValidationService.ValidateSyntaxWithDetails(fixedScript);
-                if (fixedSyntaxIsValid)
+                try
                 {
-                    healedScript = fixedScript;
-                    break;
+                    var fixedScript = await CallOpenAIForHealingAsync(fixPrompt, apiKey, model);
+                    
+                    var (fixedSyntaxIsValid, _) = _syntaxValidationService.ValidateSyntaxWithDetails(fixedScript);
+                    if (fixedSyntaxIsValid)
+                    {
+                        healedScript = fixedScript;
+                        break;
+                    }
+                    
+                    healedScript = fixedScript; // Update for next retry
                 }
-                
-                healedScript = fixedScript; // Update for next retry
+                catch (HttpRequestException ex) when (ex.Message.Contains("Rate limit exceeded"))
+                {
+                    // If rate limit is hit during retry, provide more specific error and stop retrying
+                    throw new HttpRequestException(
+                        "Initial test healing succeeded but contained syntax errors. " +
+                        "Rate limit exceeded while attempting to fix syntax errors. " +
+                        "Please wait a few moments and try again, or check your quota at https://platform.openai.com/usage",
+                        ex);
+                }
             }
             
             // Re-validate after retries
